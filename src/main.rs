@@ -1,4 +1,16 @@
-use std::fs;
+use std::{
+    error::Error,
+    fs,
+    io::{stdout, Write},
+};
+
+pub use crossterm::style::Color;
+use crossterm::{
+    cursor, execute, queue,
+    style::{self, Print},
+    terminal::{self, ClearType},
+};
+pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 #[derive(Debug)]
 struct Nmos6502 {
@@ -6,7 +18,7 @@ struct Nmos6502 {
     x: u8,
     // A accumulator register
     a: u8,
-    memory: [u8; 8192],
+    memory: [u8; 256],
     pc: u16,
     // Address range 0x1000 to 0x2000
     program: [u8; 4096],
@@ -23,13 +35,92 @@ impl Nmos6502 {
     }
 }
 
+fn set_up_terminal() -> Result<()> {
+    let mut stdout = stdout();
+    execute!(stdout, terminal::EnterAlternateScreen)?;
+    terminal::enable_raw_mode()?;
+    Ok(())
+}
+
+fn teardown_terminal() -> Result<()> {
+    let mut stdout = stdout();
+    execute!(
+        stdout,
+        style::ResetColor,
+        cursor::Show,
+        terminal::LeaveAlternateScreen
+    )?;
+    Ok(())
+}
+
+fn clear_terminal() -> Result<()> {
+    let mut stdout = stdout();
+    queue!(
+        stdout,
+        style::ResetColor,
+        terminal::Clear(ClearType::All),
+        cursor::Hide,
+        cursor::MoveTo(0, 0),
+    )?;
+    Ok(())
+}
+
+fn draw_terminal(chip: &Nmos6502) -> Result<()> {
+    let mut stdout = stdout();
+    queue!(
+        stdout,
+        style::SetForegroundColor(Color::White),
+        cursor::MoveRight(5),
+        Print("NMOS 6502"),
+        cursor::MoveToNextLine(1),
+        Print(format!(
+            "Registers: X({:X}) Y({:X}) A({:X})   |",
+            chip.x, 0, chip.pc
+        )),
+        Print(format!("PC: {:X}   |", chip.pc)),
+        cursor::MoveToNextLine(1),
+        Print(format!("Flags: Z({})", chip.z)),
+        cursor::MoveToNextLine(2),
+        cursor::MoveRight(5),
+        Print("MMappd Hardware"),
+        cursor::MoveToNextLine(1),
+    )?;
+
+    for i in 0..8 {
+        for j in 0..16 {
+            let memory = chip.memory[i * 16 + j];
+            queue!(stdout, Print(format!("{:X} ", memory)))?
+        }
+
+        queue!(stdout, cursor::MoveToNextLine(1))?
+    }
+    queue!(
+        stdout,
+        cursor::MoveToNextLine(2),
+        Print("RAM"),
+        cursor::MoveToNextLine(1),
+    )?;
+    for i in 0..8 {
+        for j in 0..16 {
+            let memory = chip.memory[128 + i * 16 + j];
+            queue!(stdout, Print(format!("{:X} ", memory)))?
+        }
+
+        queue!(stdout, cursor::MoveToNextLine(1))?
+    }
+    stdout.flush()?;
+    Ok(())
+}
+
 fn main() {
+    set_up_terminal().expect("terminal could not be setup");
+
     let byte_vec = fs::read("./tictactoe.bin").unwrap();
     let mut chip = Nmos6502 {
         x: 0,
         a: 0,
         z: false,
-        memory: [0; 8192],
+        memory: [1; 256],
         pc: 0x1000,
         program: byte_vec
             .try_into()
@@ -37,6 +128,7 @@ fn main() {
     };
 
     loop {
+        clear_terminal().expect("couldn't clear terminal");
         let instruction = chip.next_byte();
 
         match instruction {
@@ -99,8 +191,12 @@ fn main() {
                 }
             }
             instruction => {
-                panic!("Unkown instruction: {:X}", instruction);
+                eprintln!("Unkown instruction: {:X}", instruction);
+                break;
             }
         }
+        draw_terminal(&chip).expect("couldn't draw terminal");
+        std::thread::sleep(std::time::Duration::from_millis(500));
     }
+    teardown_terminal().expect("terminal could not be setup");
 }
