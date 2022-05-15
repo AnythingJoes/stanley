@@ -36,7 +36,7 @@ impl Index<u16> for MemoryMap {
             return &self.memory[(index & 0x007F) as usize];
         }
 
-        todo!("not implemented yet");
+        todo!("index not implemented for {:X}", index);
     }
 }
 
@@ -45,14 +45,23 @@ impl IndexMut<u16> for MemoryMap {
         if (index & 0x1000) != 0 {
             panic!("assignment to program memory");
         }
+        // Memory
         if (!index & 0x1200) == 0x1200 && (index & 0x0080) != 0 {
             return &mut self.memory[(index & 0x007F) as usize];
         }
 
+        // TIA
         if (!index & 0x1080) == 0x1080 {
             return &mut self.tia[(index & 0x003F) as usize];
         }
-        todo!("not implemented yet");
+
+        // RIOT
+        // %xxx0 xx1x 1??? ????
+        // 0001 1111
+        if (!index & 0x1000) == 0x1000 && (index & 0x0480) != 0 {
+            return &mut self.riot[(index & 0x001F) as usize];
+        }
+        todo!("index mut not implemented for {:X}", index);
     }
 }
 
@@ -195,5 +204,41 @@ mod tests {
 
         mmap[0x803F] = 1;
         assert_eq!(mmap.tia[0x3F], 1);
+    }
+
+    // TODO: riot reads (state of the roit)
+    // TODO: writing will write to a buffer, but should affect behavior of the RIOT
+    #[test]
+    fn riot_write() {
+        // Addresses for tia write must be 0bxxx0 xxxx 0x?? ????
+        let program = [0; PROGRAM_SIZE];
+        let mut mmap = MemoryMap::new(program);
+
+        mmap[0x0280] = 1;
+        assert_eq!(mmap.riot[0], 1);
+
+        mmap[0x021F] = 1;
+        assert_eq!(mmap.tia[0x1F], 1);
+
+        // First mirror
+        mmap[0x0280] = 1;
+        assert_eq!(mmap.riot[0], 1);
+
+        mmap[0x021F] = 1;
+        assert_eq!(mmap.tia[0x1F], 1);
+
+        // Second mirror
+        mmap[0x03E0] = 1;
+        assert_eq!(mmap.riot[0], 1);
+
+        mmap[0x03FF] = 1;
+        assert_eq!(mmap.tia[0x1F], 1);
+
+        // Second mirror
+        mmap[0x2100] = 1;
+        assert_eq!(mmap.riot[0], 1);
+
+        mmap[0x213F] = 1;
+        assert_eq!(mmap.tia[0x1F], 1);
     }
 }

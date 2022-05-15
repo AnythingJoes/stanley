@@ -80,7 +80,23 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
     )?;
     for i in 0..4 {
         for j in 0..16 {
-            let tia = chip.mmap.tia[i * 8 + j];
+            let tia = chip.mmap.tia[i * 16 + j];
+            queue!(stdout, Print(format!("{:02X} ", tia)))?
+        }
+
+        queue!(stdout, cursor::MoveToNextLine(1))?
+    }
+
+    queue!(
+        stdout,
+        cursor::MoveToNextLine(2),
+        cursor::MoveRight(5),
+        Print("RIOT Write"),
+        cursor::MoveToNextLine(1),
+    )?;
+    for i in 0..2 {
+        for j in 0..16 {
+            let tia = chip.mmap.tia[i * 16 + j];
             queue!(stdout, Print(format!("{:02X} ", tia)))?
         }
 
@@ -173,6 +189,19 @@ fn main() {
                 let arg = chip.next_byte();
                 let index = (arg + chip.x) as u16;
                 chip.mmap[index] = chip.a;
+            }
+            // STX
+            // FLAGS: None
+            0x8E => {
+                // Mode: Absolute
+                // Syntax: STX $4444
+                // Hex: $8E
+                // Width: 3
+                // Timing: 4
+                let low = chip.next_byte() as u16;
+                let high = chip.next_byte() as u16;
+                let addr = (high << 8) + low;
+                chip.mmap[addr] = chip.x;
             }
             // INX
             // FLAGS: N z
