@@ -80,6 +80,7 @@ mod tests {
     fn test_1_clock_timer() {
         let mut riot = Riot::default();
         riot.set(0x14, 100);
+        riot.timer_reset = false;
         assert_eq!(riot.get(0x0284), 100);
 
         riot.tick(1);
@@ -99,13 +100,14 @@ mod tests {
             ..Default::default()
         };
         riot.set(0x15, 3);
+        riot.timer_reset = false;
         assert!(!riot.timint);
         assert_eq!(riot.get(0x0284), 3);
 
-        riot.tick(8);
-        assert_eq!(riot.get(0x0284), 2);
+        riot.tick(9);
+        assert_eq!(riot.get(0x0284), 1);
 
-        riot.tick(16);
+        riot.tick(8);
         assert_eq!(riot.get(0x0284), 0);
 
         riot.tick(7);
@@ -115,43 +117,45 @@ mod tests {
         assert_eq!(riot.get(0x0284), 0xFF);
 
         riot.set(0x15, 5);
+        riot.timer_reset = false;
         assert!(!riot.timint);
-        riot.tick(49);
+        riot.tick(42);
 
         assert!(riot.timint);
         assert_eq!(riot.get(0x0284), 0xFE);
-        // assert_eq!(riot.timint, false)
     }
 
     #[test]
     fn test_64_clock_timer() {
         let mut riot = Riot::default();
         riot.set(0x16, 100);
+        riot.timer_reset = false;
         assert_eq!(riot.get(0x0284), 100);
 
-        riot.tick(63);
-        assert_eq!(riot.get(0x0284), 100);
-
-        riot.tick(1);
+        riot.tick(64);
         assert_eq!(riot.get(0x0284), 99);
 
-        riot.tick(66);
+        riot.tick(1);
         assert_eq!(riot.get(0x0284), 98);
 
+        riot.tick(66);
+        assert_eq!(riot.get(0x0284), 97);
+
         riot.tick(128);
-        assert_eq!(riot.get(0x0284), 96);
+        assert_eq!(riot.get(0x0284), 95);
     }
 
     #[test]
     fn test_1024_timer() {
         let mut riot = Riot::default();
         riot.set(0x17, 100);
+        riot.timer_reset = false;
         assert_eq!(riot.get(0x0284), 100);
 
-        riot.tick(1023);
-        assert_eq!(riot.get(0x0284), 100);
+        riot.tick(1024);
+        assert_eq!(riot.get(0x0284), 99);
 
         riot.tick(1);
-        assert_eq!(riot.get(0x0284), 99);
+        assert_eq!(riot.get(0x0284), 98);
     }
 }
