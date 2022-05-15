@@ -276,6 +276,23 @@ impl Instruction for Bmi {
     }
 }
 
+// JMP
+// FLAGS:
+// Syntax: JMP Label
+// Hex: $4C
+// Width: 3
+// Timing: 3
+pub struct Jmp;
+impl Instruction for Jmp {
+    const CODE: u8 = 0x4C;
+    fn execute(&self, chip: &mut Nmos6502) -> usize {
+        let low = chip.next_byte() as u16;
+        let high = chip.next_byte() as u16;
+        chip.pc = (high << 8) + low;
+        3
+    }
+}
+
 // Stack Instructions
 //
 // TXS

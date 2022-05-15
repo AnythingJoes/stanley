@@ -169,6 +169,7 @@ fn main() {
             inst if inst == Dex::CODE => chip.execute(Dex),
             inst if inst == Bne::CODE => chip.execute(Bne),
             inst if inst == Bmi::CODE => chip.execute(Bmi),
+            inst if inst == Jmp::CODE => chip.execute(Jmp),
             inst if inst == Txs::CODE => chip.execute(Txs),
             inst if inst == Jsr::CODE => chip.execute(Jsr),
             inst if inst == Rts::CODE => chip.execute(Rts),
