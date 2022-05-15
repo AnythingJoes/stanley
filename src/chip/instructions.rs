@@ -39,6 +39,24 @@ impl Instruction for LdaI {
     }
 }
 
+// LDA
+// FLAGS: N Z
+// Mode: Zero Page
+// Syntax: LDA #$44
+// Hex: $A5
+// Width: 2
+// Timing: 2
+pub struct LdaZ;
+impl Instruction for LdaZ {
+    const CODE: u8 = 0xA5;
+    fn execute(chip: &mut Nmos6502) {
+        let arg = chip.next_byte() as u16;
+        let value = chip.mmap[arg];
+        chip.z = value == 0;
+        chip.a = value;
+    }
+}
+
 // STA
 // FLAGS: None
 // Mode: Zero Page
@@ -112,7 +130,7 @@ impl Instruction for Inx {
 // Syntax: BNE Label
 // Hex: $D0
 // Width: 1
-// Timing: 2, +1 if taken, +1 if across page boundry
+// Timing: 2, +1 if taken, +1 if across page boundary
 pub struct Bne;
 impl Instruction for Bne {
     const CODE: u8 = 0xD0;
@@ -181,5 +199,23 @@ impl Instruction for Rts {
         chip.sp += 1;
         let high = chip.mmap[chip.sp as u16] as u16;
         chip.pc = (high << 8) + low + 1;
+    }
+}
+
+// Bitwise Operations
+
+// EOR
+// FLAGS: N Z
+// Syntax: EOR #$44
+// Mode: Immediate
+// Hex: $49
+// Width: 2
+// Timing: 2
+pub struct Eor;
+impl Instruction for Eor {
+    const CODE: u8 = 0x49;
+    fn execute(chip: &mut Nmos6502) {
+        let arg = chip.next_byte();
+        chip.a ^= arg;
     }
 }

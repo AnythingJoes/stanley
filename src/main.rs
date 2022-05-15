@@ -146,6 +146,7 @@ fn main() {
         match instruction {
             inst if inst == LdxI::CODE => LdxI::execute(&mut chip),
             inst if inst == LdaI::CODE => LdaI::execute(&mut chip),
+            inst if inst == LdaZ::CODE => LdaZ::execute(&mut chip),
             inst if inst == StaZ::CODE => StaZ::execute(&mut chip),
             inst if inst == StaZX::CODE => StaZX::execute(&mut chip),
             inst if inst == StxA::CODE => StxA::execute(&mut chip),
@@ -154,12 +155,13 @@ fn main() {
             inst if inst == Txs::CODE => Txs::execute(&mut chip),
             inst if inst == Jsr::CODE => Jsr::execute(&mut chip),
             inst if inst == Rts::CODE => Rts::execute(&mut chip),
+            inst if inst == Eor::CODE => Eor::execute(&mut chip),
             inst => {
                 if debug {
                     std::thread::sleep(std::time::Duration::from_millis(5000));
                     teardown_terminal().expect("terminal could not be torn down");
                 }
-                panic!("Unkown inst: {:02X}", inst);
+                panic!("Unknown instruction: {:02X}", inst);
             }
         }
         if debug {
