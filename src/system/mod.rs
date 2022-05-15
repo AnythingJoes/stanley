@@ -115,13 +115,13 @@ RAM\r\n",
             self.clocks,
         )?;
 
-        for i in 0..8 {
-            for j in 0..16 {
-                let memory = self.memory[i * 16 + j];
-                write!(f, "{:02X} ", memory)?;
-            }
-            write!(f, "\r\n")?;
-        }
+        // for i in 0..8 {
+        //     for j in 0..16 {
+        //         let memory = self.memory[i * 16 + j];
+        //         write!(f, "{:02X} ", memory)?;
+        //     }
+        //     write!(f, "\r\n")?;
+        // }
         Ok(())
     }
 }

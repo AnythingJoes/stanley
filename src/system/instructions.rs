@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::System;
 
 // LDX
@@ -351,7 +353,7 @@ fn execute_nop(_system: &mut System) -> usize {
 }
 
 #[derive(Debug)]
-enum InstructionName {
+pub enum InstructionName {
     Adc,
     Add,
     Asl,
@@ -410,6 +412,70 @@ enum InstructionName {
     Sty,
 }
 
+impl fmt::Display for InstructionName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            Self::Adc => "ADC".to_owned(),
+            Self::Add => "ADD".to_owned(),
+            Self::Asl => "ASL".to_owned(),
+            Self::Bit => "BIT".to_owned(),
+            Self::Bpl => "BPL".to_owned(),
+            Self::Bmi => "BMI".to_owned(),
+            Self::Bvc => "BVC".to_owned(),
+            Self::Bvs => "BVS".to_owned(),
+            Self::Bcc => "BCC".to_owned(),
+            Self::Bcs => "BCS".to_owned(),
+            Self::Bne => "BNE".to_owned(),
+            Self::Beq => "BEQ".to_owned(),
+            Self::Brk => "BRK".to_owned(),
+            Self::Cmp => "CMP".to_owned(),
+            Self::Cpx => "CPX".to_owned(),
+            Self::Cpy => "CPY".to_owned(),
+            Self::Dec => "DEC".to_owned(),
+            Self::Eor => "EOR".to_owned(),
+            Self::Clc => "CLC".to_owned(),
+            Self::Sec => "SEC".to_owned(),
+            Self::Cli => "CLI".to_owned(),
+            Self::Sei => "SEI".to_owned(),
+            Self::Clv => "CLV".to_owned(),
+            Self::Cld => "CLD".to_owned(),
+            Self::Sed => "SED".to_owned(),
+            Self::Inc => "INC".to_owned(),
+            Self::Jmp => "JMP".to_owned(),
+            Self::Jsr => "JSR".to_owned(),
+            Self::Lda => "LDA".to_owned(),
+            Self::Ldx => "LDX".to_owned(),
+            Self::Ldy => "LDY".to_owned(),
+            Self::Lsr => "LSR".to_owned(),
+            Self::Nop => "NOP".to_owned(),
+            Self::Ora => "ORA".to_owned(),
+            Self::Tax => "TAX".to_owned(),
+            Self::Txa => "TXA".to_owned(),
+            Self::Dex => "DEX".to_owned(),
+            Self::Inx => "INX".to_owned(),
+            Self::Tay => "TAY".to_owned(),
+            Self::Tya => "TYA".to_owned(),
+            Self::Dey => "DEY".to_owned(),
+            Self::Iny => "INY".to_owned(),
+            Self::Rol => "ROL".to_owned(),
+            Self::Ror => "ROR".to_owned(),
+            Self::Rti => "RTI".to_owned(),
+            Self::Rts => "RTS".to_owned(),
+            Self::Sbc => "SBC".to_owned(),
+            Self::Sta => "STA".to_owned(),
+            Self::Txs => "TXS".to_owned(),
+            Self::Tsx => "TSX".to_owned(),
+            Self::Pha => "PHA".to_owned(),
+            Self::Pla => "PLA".to_owned(),
+            Self::Php => "PHP".to_owned(),
+            Self::Plp => "PLP".to_owned(),
+            Self::Stx => "STX".to_owned(),
+            Self::Sty => "STY".to_owned(),
+        };
+        write!(f, "{}", name)
+    }
+}
+
 // 1. Absolute a 4 (3) 4 (3) 3 3
 // 3. Absolute Indexed with X a,x 4 (1,3) 4 (1,3) 3 3
 // 4. Absolute Indexed with Y a,y 4 (1) 4 (1) 3 3
@@ -425,7 +491,7 @@ enum InstructionName {
 // 14. Zero Page Indexed with Y zp,y 4 4 2 2
 // 16. Zero Page Indirect Indexed with Y (zp),y
 #[derive(Debug)]
-enum AddressMode {
+pub enum AddressMode {
     Absolute,
     AbsoluteX,
     AbsoluteY,
@@ -441,9 +507,11 @@ enum AddressMode {
     ZeroPageIY,
 }
 
+impl AddressMode {}
+
 pub struct InstructionValue {
-    name: InstructionName,
-    address_mode: AddressMode,
+    pub name: InstructionName,
+    pub address_mode: AddressMode,
     execute: Option<fn(&mut System) -> usize>,
 }
 
@@ -1252,5 +1320,68 @@ impl InstructionValue {
             )
         })?;
         Ok(execute(system))
+    }
+
+    pub fn format_arguments<'a, T>(&self, iter: &mut T) -> String
+    where
+        T: Iterator<Item = (usize, &'a u8)>,
+    {
+        match self.address_mode {
+            AddressMode::Absolute => {
+                let low = *iter.next().unwrap().1 as u16;
+                let high = *iter.next().unwrap().1 as u16;
+                let addr = (high << 8) + low;
+                format!("${addr:04X}")
+            }
+            AddressMode::AbsoluteX => {
+                let low = *iter.next().unwrap().1 as u16;
+                let high = *iter.next().unwrap().1 as u16;
+                let addr = (high << 8) + low;
+                format!("${addr:04X}, X")
+            }
+            AddressMode::AbsoluteY => {
+                let low = *iter.next().unwrap().1 as u16;
+                let high = *iter.next().unwrap().1 as u16;
+                let addr = (high << 8) + low;
+                format!("${addr:04X}, X")
+            }
+            AddressMode::AbsoluteI => {
+                let low = *iter.next().unwrap().1 as u16;
+                let high = *iter.next().unwrap().1 as u16;
+                let addr = (high << 8) + low;
+                format!("(${addr:04X})")
+            }
+            AddressMode::Accumulator | AddressMode::Implied => "".to_owned(),
+            AddressMode::Immediate => {
+                let value = *iter.next().unwrap().1 as u16;
+                format!("#${value:02X}")
+            }
+            AddressMode::Relative | AddressMode::ZeroPage => {
+                let value = *iter.next().unwrap().1 as u16;
+                format!("${value:02X}")
+            }
+            AddressMode::ZeroPageIX => {
+                let value = *iter.next().unwrap().1 as u16;
+                format!("(${value:02X}, X)")
+            }
+            AddressMode::ZeroPageY => {
+                let value = *iter.next().unwrap().1 as u16;
+                format!("${value:02X}, Y")
+            }
+            AddressMode::ZeroPageX => {
+                let value = *iter.next().unwrap().1 as u16;
+                format!("${value:02X}, X")
+            }
+            AddressMode::ZeroPageIY => {
+                let value = *iter.next().unwrap().1 as u16;
+                format!("(${value:02X}), Y")
+            }
+        }
+    }
+}
+
+impl fmt::Display for InstructionValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
     }
 }

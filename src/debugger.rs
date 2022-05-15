@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     io::{stdout, Write},
     time::Duration,
 };
@@ -12,78 +13,157 @@ use crossterm::{
     terminal::{self, ClearType},
 };
 
-use crate::system::System;
+use super::Result;
+use crate::system::{instructions::InstructionValue, System};
 
-pub struct Debugger {
-    is_debug: bool,
-}
-
-impl Debugger {
-    pub fn mode(is_debug: bool) -> Self {
-        Self { is_debug }
-    }
-
-    pub fn setup(&self) -> super::Result<()> {
-        if self.is_debug {
-            let mut stdout = stdout();
-            execute!(stdout, terminal::EnterAlternateScreen)?;
-            terminal::enable_raw_mode()?;
-        }
+pub trait Debugger {
+    fn setup(&mut self, _program: [u8; 4096]) -> Result<()> {
         Ok(())
     }
 
-    pub fn debug_loop(&self, system: &System) -> super::Result<()> {
-        if self.is_debug {
-            let mut stdout = stdout();
-            queue!(
-                stdout,
-                style::ResetColor,
-                terminal::Clear(ClearType::All),
-                cursor::Hide,
-                cursor::MoveTo(0, 0),
-            )?;
+    fn debug_loop(&self, _system: &System) -> Result<()> {
+        Ok(())
+    }
 
+    fn teardown(&self) -> super::Result<()> {
+        Ok(())
+    }
+}
+
+pub fn get_debugger(is_debug: bool) -> Box<dyn Debugger> {
+    if is_debug {
+        Box::new(ActiveDebugger::default())
+    } else {
+        Box::new(NullDebugger)
+    }
+}
+
+pub struct NullDebugger;
+impl Debugger for NullDebugger {}
+
+#[derive(Default)]
+pub struct ActiveDebugger {
+    disassembly: Option<BTreeMap<u16, String>>,
+}
+
+impl ActiveDebugger {
+    fn disassemble(&mut self, program: [u8; 4096]) {
+        let mut disassembly = BTreeMap::new();
+        let mut program_iter = program.iter().enumerate().peekable();
+        let mut in_data = false;
+
+        while program_iter.peek().is_some() {
+            let inst = program_iter.next().unwrap();
+            let key = inst.0 + 0x1000;
+            let inst_value: std::result::Result<InstructionValue, _> = (*inst.1).try_into();
+            if in_data {
+                disassembly.insert(key as u16, inst.1.to_string());
+                continue;
+            }
+
+            if let Ok(inst_value) = inst_value {
+                let value = format!(
+                    "{key:04X}: {} {}",
+                    inst_value,
+                    inst_value.format_arguments(&mut program_iter)
+                );
+                disassembly.insert(key as u16, value);
+            } else {
+                in_data = true;
+                disassembly.insert(key as u16, inst.1.to_string());
+            }
+        }
+        self.disassembly.replace(disassembly);
+    }
+}
+
+impl Debugger for ActiveDebugger {
+    fn setup(&mut self, program: [u8; 4096]) -> super::Result<()> {
+        let mut stdout = stdout();
+        self.disassemble(program);
+        execute!(stdout, terminal::EnterAlternateScreen)?;
+        terminal::enable_raw_mode()?;
+        Ok(())
+    }
+
+    fn debug_loop(&self, system: &System) -> super::Result<()> {
+        let mut stdout = stdout();
+        queue!(
+            stdout,
+            style::ResetColor,
+            terminal::Clear(ClearType::All),
+            cursor::Hide,
+            cursor::MoveTo(0, 0),
+        )?;
+
+        queue!(
+            stdout,
+            style::SetForegroundColor(Color::White),
+            Print(format!("{}", system.chip)),
+            cursor::MoveToNextLine(1),
+            Print(format!("{}", system)),
+        )?;
+        queue!(stdout, cursor::MoveToNextLine(1),)?;
+        let riot = &system.riot;
+        queue!(stdout, Print(format!("{} ", riot)))?;
+        queue!(
+            stdout,
+            cursor::MoveToNextLine(1),
+            Print(format!("{} ", system.tia)),
+        )?;
+
+        queue!(stdout, cursor::MoveToNextLine(1), Print("Program"),)?;
+
+        let current_line = system.chip.pc & 0x1FFF;
+        for (&key, line) in self
+            .disassembly
+            .as_ref()
+            .unwrap()
+            .range(current_line - 10..current_line + 10)
+        {
+            if current_line == key {
+                queue!(
+                    stdout,
+                    style::SetForegroundColor(Color::Black),
+                    style::SetBackgroundColor(Color::White)
+                )?;
+            }
             queue!(
                 stdout,
-                style::SetForegroundColor(Color::White),
-                Print(format!("{}", system.chip)),
                 cursor::MoveToNextLine(1),
-                Print(format!("{}", system)),
+                Print(format!("{} ", line)),
             )?;
-            queue!(stdout, cursor::MoveToNextLine(1),)?;
-            let riot = &system.riot;
-            queue!(stdout, Print(format!("{} ", riot)))?;
-            queue!(
-                stdout,
-                cursor::MoveToNextLine(1),
-                Print(format!("{} ", system.tia)),
-            )?;
+            if current_line == key {
+                queue!(
+                    stdout,
+                    style::SetForegroundColor(Color::White),
+                    style::SetBackgroundColor(Color::Black)
+                )?;
+            }
+        }
 
-            stdout.flush()?;
+        stdout.flush()?;
 
-            if let Ok(true) = poll(Duration::from_millis(10)) {
-                if let Ok(CTEvent::Key(KeyEvent { code, modifiers })) = read() {
-                    if code == KeyCode::Esc
-                        || (code == KeyCode::Char('c') && modifiers.contains(KeyModifiers::CONTROL))
-                    {
-                        return Err("User cancelled execution".into());
-                    }
+        if let Ok(true) = poll(Duration::from_millis(10)) {
+            if let Ok(CTEvent::Key(KeyEvent { code, modifiers })) = read() {
+                if code == KeyCode::Esc
+                    || (code == KeyCode::Char('c') && modifiers.contains(KeyModifiers::CONTROL))
+                {
+                    return Err("User cancelled execution".into());
                 }
             }
         }
         Ok(())
     }
 
-    pub fn teardown(&self) -> super::Result<()> {
-        if self.is_debug {
-            let mut stdout = stdout();
-            execute!(
-                stdout,
-                style::ResetColor,
-                cursor::Show,
-                terminal::LeaveAlternateScreen
-            )?;
-        }
+    fn teardown(&self) -> super::Result<()> {
+        let mut stdout = stdout();
+        execute!(
+            stdout,
+            style::ResetColor,
+            cursor::Show,
+            terminal::LeaveAlternateScreen
+        )?;
         Ok(())
     }
 }

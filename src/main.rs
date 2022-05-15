@@ -14,7 +14,7 @@ mod timer;
 use timer::Timer;
 
 mod debugger;
-use debugger::Debugger;
+use debugger::get_debugger;
 
 mod renderer;
 use renderer::Renderer;
@@ -31,17 +31,16 @@ struct Args {
 fn main() -> Result<()> {
     let Args { debug } = Args::parse();
 
-    let debugger = Debugger::mode(debug);
-    debugger.setup()?;
-
-    let mut renderer = Renderer::setup()?;
-
     let byte_vec = fs::read("./tictactoe.bin").unwrap();
     let program = byte_vec
         .try_into()
         .expect("Program expected to be 4096 bytes was not");
     let mut system = System::new(program);
     let total_time = Instant::now();
+    let mut debugger = get_debugger(debug);
+    debugger.setup(program)?;
+
+    let mut renderer = Renderer::setup()?;
 
     // Timing stuff
     let mut previous_clocks = 0;
