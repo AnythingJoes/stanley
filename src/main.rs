@@ -2,6 +2,7 @@ use std::{
     error::Error,
     fs,
     io::{stdout, Write},
+    time::{Duration, Instant},
 };
 
 use clap::Parser;
@@ -11,6 +12,7 @@ use crossterm::{
     style::{self, Print},
     terminal::{self, ClearType},
 };
+use spin_sleep::sleep;
 
 mod chip;
 use chip::instructions::*;
@@ -137,11 +139,33 @@ fn main() {
         .try_into()
         .expect("Program expected to be 4096 bytes was not");
     let mut chip = Nmos6502::new(program);
+    let total_time = Instant::now();
+
+    // Timing stuff
+    let mut runover = Duration::from_nanos(0);
+    let mut now = Instant::now();
+    let mut previous_cycles = 0;
 
     loop {
         if debug {
             clear_terminal().expect("couldn't clear terminal");
         }
+        // TODO: clean this up and test
+        // TODO: Handle cases where the sleep took a lot longer than it should
+        let cycles_run = chip.cycles - previous_cycles;
+        if cycles_run > 40 {
+            let cycle_time = Duration::from_nanos(cycles_run * 837);
+            let elapsed = now.elapsed();
+            let should_sleep = cycle_time - elapsed - runover;
+
+            now = Instant::now();
+
+            sleep(should_sleep);
+            runover = now.elapsed() - should_sleep;
+            now = Instant::now();
+            previous_cycles = chip.cycles;
+        }
+
         let instruction = chip.next_byte();
 
         match instruction {
@@ -164,6 +188,8 @@ fn main() {
                     std::thread::sleep(std::time::Duration::from_millis(5000));
                     teardown_terminal().expect("terminal could not be torn down");
                 }
+                eprintln!("Time: {}", total_time.elapsed().as_nanos());
+                eprintln!("Cycles: {}", chip.cycles);
                 panic!("Unknown instruction: {:02X}", inst);
             }
         }
@@ -173,3 +199,18 @@ fn main() {
         }
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     #[test]
+//     fn test_timing() {
+//         // calculate runover
+//         // start
+//         // run some stuff
+//         // elapsed
+//         // sleep for should have taken - elapsed - runover
+
+//     }
+// }
