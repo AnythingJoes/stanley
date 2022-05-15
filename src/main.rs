@@ -163,6 +163,7 @@ fn main() {
             inst if inst == LdaAY::CODE => chip.execute(LdaAY),
             inst if inst == StaZ::CODE => chip.execute(StaZ),
             inst if inst == StaZX::CODE => chip.execute(StaZX),
+            inst if inst == StaA::CODE => chip.execute(StaA),
             inst if inst == StxA::CODE => chip.execute(StxA),
             inst if inst == Inx::CODE => chip.execute(Inx),
             inst if inst == Bne::CODE => chip.execute(Bne),

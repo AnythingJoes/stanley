@@ -152,6 +152,25 @@ impl Instruction for StaZX {
     }
 }
 
+// STA
+// FLAGS: None
+// Mode: Zero Page,X
+// Syntax: STA $44,X
+// Hex: $8D
+// Width: 3
+// Timing: 4
+pub struct StaA;
+impl Instruction for StaA {
+    const CODE: u8 = 0x8D;
+    fn execute(&self, chip: &mut Nmos6502) -> usize {
+        let low = chip.next_byte() as u16;
+        let high = chip.next_byte() as u16;
+        let index = (high << 8) + low;
+        chip.mmap.set(index, chip.a);
+        4
+    }
+}
+
 // STX
 // FLAGS: None
 // Mode: Absolute
