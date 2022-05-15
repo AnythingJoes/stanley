@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub mod instructions;
 mod riot;
 
@@ -22,7 +24,7 @@ impl System {
             chip: Nmos6507::new(),
             riot: Riot::default(),
             clocks: 0,
-            memory: [3; MEMORY_SIZE],
+            memory: [0; MEMORY_SIZE],
             program,
         }
     }
@@ -103,6 +105,28 @@ impl System {
     }
 }
 
+impl fmt::Display for System {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "
+CLOCKS: {}\r\n
+\r\n
+RAM\r\n",
+            self.clocks,
+        )?;
+
+        for i in 0..8 {
+            for j in 0..16 {
+                let memory = self.memory[i * 16 + j];
+                write!(f, "{:02X} ", memory)?;
+            }
+            write!(f, "\r\n")?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Default)]
 pub struct Nmos6507 {
     /// X indexing register
@@ -130,6 +154,20 @@ impl Nmos6507 {
             pc: 0x1000,
             ..Default::default()
         }
+    }
+}
+
+impl fmt::Display for Nmos6507 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "
+NMOS 6507\r\n
+Registers: X({:02X}) Y({:02X}) A({:02X})   | PC: {:02X}   | SP: {:02X}   |\r\n\r\n
+Flags: Z({}) N({}) C({})\r\n
+            ",
+            self.x, self.y, self.a, self.pc, self.sp, self.z, self.n, self.c
+        )
     }
 }
 

@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Default, Debug)]
 pub struct Riot {
     timer: u8,
@@ -51,6 +53,19 @@ impl Riot {
             self.timer = value;
             self.clocks = total_clocks % self.clocks_per_interval;
         }
+    }
+}
+
+impl fmt::Display for Riot {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "
+RIOT\r\n
+Timer: {:03}  | Timer Width  {:04} | TIMINT: {}\r\n\r\n
+            ",
+            self.timer, self.clocks_per_interval, self.timint
+        )
     }
 }
 

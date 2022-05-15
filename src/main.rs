@@ -8,7 +8,9 @@ use std::{
 use clap::Parser;
 use crossterm::style::Color;
 use crossterm::{
-    cursor, execute, queue,
+    cursor,
+    event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
+    execute, queue,
     style::{self, Print},
     terminal::{self, ClearType},
 };
@@ -64,52 +66,14 @@ fn draw_terminal(system: &mut System) -> Result<()> {
     queue!(
         stdout,
         style::SetForegroundColor(Color::White),
-        cursor::MoveRight(5),
-        Print("NMOS 6502"),
+        Print(format!("{}", system.chip)),
         cursor::MoveToNextLine(1),
-        Print(format!(
-            "Registers: X({:02X}) Y({:02X}) A({:02X})   |",
-            system.chip.x, 0, system.chip.a
-        )),
-        Print(format!("PC: {:02X}   |", system.chip.pc)),
-        Print(format!("SP: {:02X}   |", system.chip.sp)),
-        Print(format!("CLOCKS: {}", system.clocks)),
-        cursor::MoveToNextLine(1),
-        cursor::MoveToNextLine(1),
-        Print(format!("Flags: Z({})", system.chip.z)),
-        cursor::MoveToNextLine(2),
-        Print(format!(
-            "Next Instruction: {:02X}",
-            system.memory_get(system.chip.pc)
-        )),
+        Print(format!("{}", system)),
     )?;
-
-    queue!(
-        stdout,
-        cursor::MoveToNextLine(2),
-        cursor::MoveRight(5),
-        Print("RIOT Write"),
-        cursor::MoveToNextLine(1),
-    )?;
+    queue!(stdout, cursor::MoveToNextLine(1),)?;
     let riot = &system.riot;
-    queue!(stdout, Print(format!("{:?} ", riot)))?;
+    queue!(stdout, Print(format!("{} ", riot)))?;
 
-    queue!(
-        stdout,
-        cursor::MoveToNextLine(2),
-        cursor::MoveRight(5),
-        Print("RAM"),
-        cursor::MoveToNextLine(1),
-    )?;
-
-    for i in 0..8 {
-        for j in 0..16 {
-            let memory = system.memory[i * 16 + j];
-            queue!(stdout, Print(format!("{:02X} ", memory)))?
-        }
-
-        queue!(stdout, cursor::MoveToNextLine(1))?
-    }
     stdout.flush()?;
     Ok(())
 }
@@ -135,6 +99,15 @@ fn main() {
     loop {
         if debug {
             clear_terminal().expect("couldn't clear terminal");
+            if let Ok(true) = poll(Duration::from_millis(10)) {
+                if let Ok(Event::Key(KeyEvent { code, modifiers })) = read() {
+                    if code == KeyCode::Esc
+                        || (code == KeyCode::Char('c') && modifiers.contains(KeyModifiers::CONTROL))
+                    {
+                        break;
+                    }
+                }
+            }
         } else {
             let clocks_run = system.clocks - previous_clocks;
             if clocks_run > 10 {
@@ -172,7 +145,7 @@ fn main() {
             inst => {
                 if debug {
                     std::thread::sleep(std::time::Duration::from_millis(5000));
-                    teardown_terminal().expect("terminal could not be torn down");
+                    break;
                 }
                 eprintln!("Time: {}", total_time.elapsed().as_nanos());
                 eprintln!("Clocks: {}", system.clocks);
@@ -180,8 +153,10 @@ fn main() {
             }
         }
         if debug {
-            std::thread::sleep(std::time::Duration::from_millis(10));
             draw_terminal(&mut system).expect("couldn't draw terminal");
         }
+    }
+    if debug {
+        teardown_terminal().expect("terminal could not be torn down");
     }
 }
