@@ -61,6 +61,8 @@ pub enum Instruction {
     Plp(AddressMode),
     Stx(AddressMode),
     Sty(AddressMode),
+    // Illegal opcodes
+    Dop(AddressMode),
 }
 
 impl Instruction {
@@ -486,6 +488,11 @@ impl Instruction {
 
                 system.memory_set(addr, value);
             }
+            // Illegal opcodes
+            Self::Dop(mode) => {
+                mode.execute(system, &mut clocks);
+                clocks += 1
+            }
         }
         Ok(clocks)
     }
@@ -555,7 +562,9 @@ impl Instruction {
             | Self::Php(mode)
             | Self::Plp(mode)
             | Self::Stx(mode)
-            | Self::Sty(mode) => mode,
+            | Self::Sty(mode)
+            // Illegal opcodes
+            | Self::Dop(mode)=> mode,
         };
 
         match mode {
@@ -713,6 +722,8 @@ impl fmt::Display for Instruction {
             Self::Plp(_) => "PLP",
             Self::Stx(_) => "STX",
             Self::Sty(_) => "STY",
+            // Illegal Opcodes
+            Self::Dop(_) => "DOP",
         };
         write!(f, "{}", name.to_owned())
     }
@@ -1019,6 +1030,8 @@ impl TryFrom<u8> for Instruction {
             0x84 => Sty(ZeroPage),
             0x94 => Sty(ZeroPageY),
             0x8C => Sty(Absolute),
+            // Illegal opcodes
+            0x04 => Dop(ZeroPage),
             _ => return Err(format!("Unknown instruction: {:02X}", value)),
         })
     }
@@ -2632,6 +2645,14 @@ mod test {
 
         let clocks = Sty(ZeroPage).execute(&mut system).unwrap();
         assert_eq!(system.memory_get(0x88), 0xFE);
+        assert_eq!(clocks, 3);
+    }
+
+    #[test]
+    fn test_instruction_type_dop_execute() {
+        let mut system = System::new([0u8; 4096]);
+
+        let clocks = Dop(ZeroPage).execute(&mut system).unwrap();
         assert_eq!(clocks, 3);
     }
 }
