@@ -13,9 +13,9 @@ use crossterm::{
     terminal::{self, ClearType},
 };
 
-mod chip;
-use chip::instructions::*;
-use chip::Nmos6502;
+mod system;
+use system::instructions::*;
+use system::System;
 
 mod timer;
 use timer::Timer;
@@ -59,7 +59,7 @@ fn clear_terminal() -> Result<()> {
     Ok(())
 }
 
-fn draw_terminal(chip: &mut Nmos6502) -> Result<()> {
+fn draw_terminal(system: &mut System) -> Result<()> {
     let mut stdout = stdout();
     queue!(
         stdout,
@@ -69,29 +69,20 @@ fn draw_terminal(chip: &mut Nmos6502) -> Result<()> {
         cursor::MoveToNextLine(1),
         Print(format!(
             "Registers: X({:02X}) Y({:02X}) A({:02X})   |",
-            chip.x, 0, chip.a
+            system.chip.x, 0, system.chip.a
         )),
-        Print(format!("PC: {:02X}   |", chip.pc)),
-        Print(format!("SP: {:02X}   |", chip.sp)),
-        Print(format!("CYCLES: {}", chip.cycles)),
+        Print(format!("PC: {:02X}   |", system.chip.pc)),
+        Print(format!("SP: {:02X}   |", system.chip.sp)),
+        Print(format!("CLOCKS: {}", system.clocks)),
         cursor::MoveToNextLine(1),
         cursor::MoveToNextLine(1),
-        Print(format!("Flags: Z({})", chip.z)),
+        Print(format!("Flags: Z({})", system.chip.z)),
         cursor::MoveToNextLine(2),
-        Print(format!("Next Instruction: {:02X}", chip.mmap.get(chip.pc))),
-        cursor::MoveToNextLine(2),
-        cursor::MoveRight(5),
-        Print("TIA Write"),
-        cursor::MoveToNextLine(1),
+        Print(format!(
+            "Next Instruction: {:02X}",
+            system.memory_get(system.chip.pc)
+        )),
     )?;
-    for i in 0..4 {
-        for j in 0..16 {
-            let tia = chip.mmap.tia[i * 16 + j];
-            queue!(stdout, Print(format!("{:02X} ", tia)))?
-        }
-
-        queue!(stdout, cursor::MoveToNextLine(1))?
-    }
 
     queue!(
         stdout,
@@ -100,7 +91,7 @@ fn draw_terminal(chip: &mut Nmos6502) -> Result<()> {
         Print("RIOT Write"),
         cursor::MoveToNextLine(1),
     )?;
-    let riot = &chip.mmap.riot;
+    let riot = &system.riot;
     queue!(stdout, Print(format!("{:?} ", riot)))?;
 
     queue!(
@@ -113,7 +104,7 @@ fn draw_terminal(chip: &mut Nmos6502) -> Result<()> {
 
     for i in 0..8 {
         for j in 0..16 {
-            let memory = chip.mmap.memory[i * 16 + j];
+            let memory = system.memory[i * 16 + j];
             queue!(stdout, Print(format!("{:02X} ", memory)))?
         }
 
@@ -134,63 +125,63 @@ fn main() {
     let program = byte_vec
         .try_into()
         .expect("Program expected to be 4096 bytes was not");
-    let mut chip = Nmos6502::new(program);
+    let mut system = System::new(program);
     let total_time = Instant::now();
 
     // Timing stuff
-    let mut previous_cycles = 0;
+    let mut previous_clocks = 0;
     let mut timer = Timer::start();
 
     loop {
         if debug {
             clear_terminal().expect("couldn't clear terminal");
         } else {
-            let cycles_run = chip.cycles - previous_cycles;
-            if cycles_run > 10 {
-                let cycle_time = Duration::from_nanos((cycles_run * 837) as u64);
-                timer.pause_for(cycle_time);
-                previous_cycles = chip.cycles;
+            let clocks_run = system.clocks - previous_clocks;
+            if clocks_run > 10 {
+                let clock_time = Duration::from_nanos((clocks_run * 837) as u64);
+                timer.pause_for(clock_time);
+                previous_clocks = system.clocks;
             }
         }
 
-        let instruction = chip.next_byte();
+        let instruction = system.next_byte();
 
         match instruction {
-            inst if inst == LdxI::CODE => chip.execute(LdxI),
-            inst if inst == LdaI::CODE => chip.execute(LdaI),
-            inst if inst == LdaZ::CODE => chip.execute(LdaZ),
-            inst if inst == LdaA::CODE => chip.execute(LdaA),
-            inst if inst == LdaAY::CODE => chip.execute(LdaAY),
-            inst if inst == StaZ::CODE => chip.execute(StaZ),
-            inst if inst == StaZX::CODE => chip.execute(StaZX),
-            inst if inst == StaA::CODE => chip.execute(StaA),
-            inst if inst == StxA::CODE => chip.execute(StxA),
-            inst if inst == Inx::CODE => chip.execute(Inx),
-            inst if inst == Dex::CODE => chip.execute(Dex),
-            inst if inst == Bne::CODE => chip.execute(Bne),
-            inst if inst == Bmi::CODE => chip.execute(Bmi),
-            inst if inst == Jmp::CODE => chip.execute(Jmp),
-            inst if inst == Txs::CODE => chip.execute(Txs),
-            inst if inst == Txa::CODE => chip.execute(Txa),
-            inst if inst == Tay::CODE => chip.execute(Tay),
-            inst if inst == Jsr::CODE => chip.execute(Jsr),
-            inst if inst == Rts::CODE => chip.execute(Rts),
-            inst if inst == Eor::CODE => chip.execute(Eor),
-            inst if inst == Lsr::CODE => chip.execute(Lsr),
-            inst if inst == Nop::CODE => chip.execute(Nop),
+            inst if inst == LdxI::CODE => system.execute(LdxI),
+            inst if inst == LdaI::CODE => system.execute(LdaI),
+            inst if inst == LdaZ::CODE => system.execute(LdaZ),
+            inst if inst == LdaA::CODE => system.execute(LdaA),
+            inst if inst == LdaAY::CODE => system.execute(LdaAY),
+            inst if inst == StaZ::CODE => system.execute(StaZ),
+            inst if inst == StaZX::CODE => system.execute(StaZX),
+            inst if inst == StaA::CODE => system.execute(StaA),
+            inst if inst == StxA::CODE => system.execute(StxA),
+            inst if inst == Inx::CODE => system.execute(Inx),
+            inst if inst == Dex::CODE => system.execute(Dex),
+            inst if inst == Bne::CODE => system.execute(Bne),
+            inst if inst == Bmi::CODE => system.execute(Bmi),
+            inst if inst == Jmp::CODE => system.execute(Jmp),
+            inst if inst == Txs::CODE => system.execute(Txs),
+            inst if inst == Txa::CODE => system.execute(Txa),
+            inst if inst == Tay::CODE => system.execute(Tay),
+            inst if inst == Jsr::CODE => system.execute(Jsr),
+            inst if inst == Rts::CODE => system.execute(Rts),
+            inst if inst == Eor::CODE => system.execute(Eor),
+            inst if inst == Lsr::CODE => system.execute(Lsr),
+            inst if inst == Nop::CODE => system.execute(Nop),
             inst => {
                 if debug {
                     std::thread::sleep(std::time::Duration::from_millis(5000));
                     teardown_terminal().expect("terminal could not be torn down");
                 }
                 eprintln!("Time: {}", total_time.elapsed().as_nanos());
-                eprintln!("Cycles: {}", chip.cycles);
+                eprintln!("Clocks: {}", system.clocks);
                 panic!("Unknown instruction: {:02X}", inst);
             }
         }
         if debug {
             std::thread::sleep(std::time::Duration::from_millis(10));
-            draw_terminal(&mut chip).expect("couldn't draw terminal");
+            draw_terminal(&mut system).expect("couldn't draw terminal");
         }
     }
 }
