@@ -40,7 +40,26 @@ impl Index<u16> for MemoryMap {
 
         // TIA Read
         // TODO: Needs a real implementation
+        // If it ends in 0xC, it's trying to read player 0 input in this case 0
+        // is pressed and 1 in the sign bit is the default state. We want to
+        // return the default state until we implement input
         if (!index & 0x1080) == 0x1080 {
+            if (index & 0x000F) == 0xC {
+                return &0b1000_0000;
+            }
+            return &0;
+        }
+
+        // RIOT Read
+        // TODO: Needs a real implementation
+        // The first thing we encountered was a timer, we are going to assume
+        // that the timer was written to and the programmer is waiting for it
+        // to reach zero. This will drive out the implementation of clock cycles
+        if (!index & 0x1000) == 0x1000 && (index & 0x0480) != 0 {
+            // INTIM timer check
+            if index & 0x0284 == 0x0284 {
+                return &1; // anything but zero
+            }
             return &0;
         }
 

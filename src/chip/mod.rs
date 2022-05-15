@@ -4,16 +4,18 @@ mod memory_map;
 use memory_map::MemoryMap;
 
 pub struct Nmos6502 {
-    // X indexing register
+    /// X indexing register
     pub x: u8,
-    // A accumulator register
+    /// A accumulator register
     pub a: u8,
-    // Program counter
+    /// Program counter
     pub pc: u16,
-    // Stack pointer
+    /// Stack pointer
     pub sp: u8,
-    // FLAGS
-    // zero
+    /// FLAGS
+    /// negative
+    pub n: bool,
+    /// zero
     pub z: bool,
     /// Memory Map
     pub mmap: MemoryMap,
@@ -24,6 +26,7 @@ impl Nmos6502 {
         Nmos6502 {
             x: 0,
             a: 0,
+            n: false,
             z: false,
             pc: 0x1000,
             sp: 0,

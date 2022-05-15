@@ -18,6 +18,8 @@ impl Instruction for LdxI {
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte();
         chip.z = arg == 0;
+        chip.n = (arg as i8) < 0;
+
         chip.x = arg;
     }
 }
@@ -35,6 +37,8 @@ impl Instruction for LdaI {
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte();
         chip.z = arg == 0;
+        chip.n = (arg as i8) < 0;
+
         chip.a = arg;
     }
 }
@@ -53,10 +57,32 @@ impl Instruction for LdaZ {
         let arg = chip.next_byte() as u16;
         let value = chip.mmap[arg];
         chip.z = value == 0;
+        chip.n = (value as i8) < 0;
+
         chip.a = value;
     }
 }
 
+// LDA
+// FLAGS: N Z
+// Mode: Absolute
+// Syntax: LDA #$44
+// Hex: $AD
+// Width: 3
+// Timing: 4
+pub struct LdaA;
+impl Instruction for LdaA {
+    const CODE: u8 = 0xAD;
+    fn execute(chip: &mut Nmos6502) {
+        let low = chip.next_byte() as u16;
+        let high = chip.next_byte() as u16;
+        let value = chip.mmap[(high << 8) + low];
+        chip.z = value == 0;
+        chip.n = (value as i8) < 0;
+
+        chip.a = value;
+    }
+}
 // STA
 // FLAGS: None
 // Mode: Zero Page
@@ -119,7 +145,9 @@ impl Instruction for Inx {
     const CODE: u8 = 0xE8;
     fn execute(chip: &mut Nmos6502) {
         chip.x = chip.x.wrapping_add(1);
+
         chip.z = chip.x == 0;
+        chip.n = (chip.x as i8) < 0;
     }
 }
 
@@ -137,6 +165,23 @@ impl Instruction for Bne {
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte() as i8;
         if !chip.z {
+            chip.pc = chip.pc.wrapping_add(arg as u16);
+        }
+    }
+}
+
+// BMI
+// FLAGS:
+// Syntax: BNE Label
+// Hex: $30
+// Width: 1
+// Timing: 2, +1 if taken, +1 if across page boundary
+pub struct Bmi;
+impl Instruction for Bmi {
+    const CODE: u8 = 0x30;
+    fn execute(chip: &mut Nmos6502) {
+        let arg = chip.next_byte() as i8;
+        if chip.n {
             chip.pc = chip.pc.wrapping_add(arg as u16);
         }
     }
@@ -216,6 +261,8 @@ impl Instruction for Eor {
     const CODE: u8 = 0x49;
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte();
+        chip.n = (arg as i8) < 0;
+        chip.z = arg == 0;
         chip.a ^= arg;
     }
 }
