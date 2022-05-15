@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 
 use super::System;
@@ -1322,7 +1323,12 @@ impl InstructionValue {
         Ok(execute(system))
     }
 
-    pub fn format_arguments<'a, T>(&self, iter: &mut T) -> String
+    pub fn format_arguments<'a, T>(
+        &self,
+        iter: &mut T,
+        symbol_map: &HashMap<u16, String>,
+        pc: u16,
+    ) -> String
     where
         T: Iterator<Item = (usize, &'a u8)>,
     {
@@ -1331,50 +1337,92 @@ impl InstructionValue {
                 let low = *iter.next().unwrap().1 as u16;
                 let high = *iter.next().unwrap().1 as u16;
                 let addr = (high << 8) + low;
-                format!("${addr:04X}")
+                symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:04X}"))
             }
             AddressMode::AbsoluteX => {
                 let low = *iter.next().unwrap().1 as u16;
                 let high = *iter.next().unwrap().1 as u16;
                 let addr = (high << 8) + low;
-                format!("${addr:04X}, X")
+                let addr = symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:04X}"));
+                format!("{addr}, X")
             }
             AddressMode::AbsoluteY => {
                 let low = *iter.next().unwrap().1 as u16;
                 let high = *iter.next().unwrap().1 as u16;
                 let addr = (high << 8) + low;
-                format!("${addr:04X}, X")
+                let addr = symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:04X}"));
+                format!("{addr}, Y")
             }
             AddressMode::AbsoluteI => {
                 let low = *iter.next().unwrap().1 as u16;
                 let high = *iter.next().unwrap().1 as u16;
                 let addr = (high << 8) + low;
-                format!("(${addr:04X})")
+                let addr = symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:04X}"));
+                format!("({addr})")
             }
             AddressMode::Accumulator | AddressMode::Implied => "".to_owned(),
             AddressMode::Immediate => {
                 let value = *iter.next().unwrap().1 as u16;
                 format!("#${value:02X}")
             }
-            AddressMode::Relative | AddressMode::ZeroPage => {
-                let value = *iter.next().unwrap().1 as u16;
-                format!("${value:02X}")
+            AddressMode::Relative => {
+                let value = *iter.next().unwrap().1 as i8;
+                let addr = (pc + 2).wrapping_add(value as u16);
+                symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:02X}"))
+            }
+            AddressMode::ZeroPage => {
+                let addr = *iter.next().unwrap().1 as u16;
+                symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:02X}"))
             }
             AddressMode::ZeroPageIX => {
-                let value = *iter.next().unwrap().1 as u16;
-                format!("(${value:02X}, X)")
+                let addr = *iter.next().unwrap().1 as u16;
+                let addr = symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:02X}"));
+                format!("(${addr}, X)")
             }
             AddressMode::ZeroPageY => {
-                let value = *iter.next().unwrap().1 as u16;
-                format!("${value:02X}, Y")
+                let addr = *iter.next().unwrap().1 as u16;
+                let addr = symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:02X}"));
+                format!("${addr}, Y")
             }
             AddressMode::ZeroPageX => {
-                let value = *iter.next().unwrap().1 as u16;
-                format!("${value:02X}, X")
+                let addr = *iter.next().unwrap().1 as u16;
+                let addr = symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:02X}"));
+                format!("${addr}, X")
             }
             AddressMode::ZeroPageIY => {
-                let value = *iter.next().unwrap().1 as u16;
-                format!("(${value:02X}), Y")
+                let addr = *iter.next().unwrap().1 as u16;
+                let addr = symbol_map
+                    .get(&(addr & 0x1FFF))
+                    .map(|sym| sym.to_owned())
+                    .unwrap_or_else(|| format!("${addr:02X}"));
+                format!("(${addr}), Y")
             }
         }
     }

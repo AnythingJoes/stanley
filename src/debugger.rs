@@ -85,6 +85,8 @@ impl ActiveDebugger {
                 .unwrap_or_else(|| "  ".to_owned());
 
             let inst_value: std::result::Result<InstructionValue, _> = (*inst.1).try_into();
+            // TODO: This assumes that all code blocks are contiguous, they are not. This will need
+            // to get fixed
             if in_data {
                 let value = format!("{}{}", key_str, inst.1);
                 disassembly.insert(key as u16, value);
@@ -96,7 +98,7 @@ impl ActiveDebugger {
                     "{}{} {}",
                     key_str,
                     inst_value,
-                    inst_value.format_arguments(&mut program_iter)
+                    inst_value.format_arguments(&mut program_iter, &self.symbol_map, key)
                 );
                 disassembly.insert(key as u16, value);
             } else {
