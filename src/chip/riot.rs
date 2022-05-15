@@ -3,10 +3,12 @@ pub struct Riot {
     timer: u8,
     clocks: usize,
     clocks_per_interval: usize,
+    timint: bool,
 }
 
 impl Riot {
     pub fn set(&mut self, index: u16, value: u8) {
+        self.timint = false;
         self.timer = value;
         self.clocks = 0;
         self.clocks_per_interval = match index {
@@ -18,22 +20,28 @@ impl Riot {
         };
     }
 
-    pub fn get(&self, index: u16) -> u8 {
+    // TODO this only gets timer, there are other values here
+    // timint is only reset if the timer is read
+    pub fn get(&mut self, index: u16) -> u8 {
+        self.timint = false;
         self.timer
     }
 
-    // TODO: This is not quite right. In reality it is definitely possible for the clock to advance
-    // more that 256 cycles between updates. We need to handle that. Also once it counts down by 1
-    // per cycle, it wraps and sets a negative flag.
-    //
-    // That flag is cleared when any timer is written OR read
     pub fn tick(&mut self, clocks: usize) {
         let total_clocks = self.clocks + clocks;
-        if total_clocks >= self.clocks_per_interval {
-            self.timer -= (total_clocks / self.clocks_per_interval) as u8;
-            self.clocks = total_clocks % self.clocks_per_interval;
+        let timer_ticks = (total_clocks / self.clocks_per_interval) as u8;
+        let (value, did_overflow) = self.timer.overflowing_sub(timer_ticks);
+
+        if did_overflow {
+            self.timer = 0xFF;
+            let overflow_ticks = 0xFF - value;
+            self.timer -= (overflow_ticks as usize * self.clocks_per_interval) as u8;
+            self.timer -= (total_clocks % self.clocks_per_interval) as u8;
+            self.clocks_per_interval = 1;
+            self.timint = true;
         } else {
-            self.clocks += clocks;
+            self.timer = value;
+            self.clocks = total_clocks % self.clocks_per_interval;
         }
     }
 }
@@ -54,8 +62,37 @@ mod tests {
         riot.tick(3);
         assert_eq!(riot.get(0x0284), 96);
 
-        riot.tick(0x0100);
-        assert_eq!(riot.get(0x0284), 0xA0);
+        riot.tick(1024);
+        assert_eq!(riot.get(0x0284), 96);
+    }
+
+    #[test]
+    fn test_8_clock_timer() {
+        let mut riot = Riot::default();
+        riot.timint = true;
+        riot.set(0x15, 3);
+        assert_eq!(riot.timint, false);
+        assert_eq!(riot.get(0x0284), 3);
+
+        riot.tick(8);
+        assert_eq!(riot.get(0x0284), 2);
+
+        riot.tick(16);
+        assert_eq!(riot.get(0x0284), 0);
+
+        riot.tick(7);
+        assert_eq!(riot.get(0x0284), 0);
+
+        riot.tick(1);
+        assert_eq!(riot.get(0x0284), 0xFF);
+
+        riot.set(0x15, 5);
+        assert_eq!(riot.timint, false);
+        riot.tick(49);
+
+        assert_eq!(riot.timint, true);
+        assert_eq!(riot.get(0x0284), 0xFE);
+        assert_eq!(riot.timint, false)
     }
 
     #[test]
