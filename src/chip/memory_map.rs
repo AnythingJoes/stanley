@@ -76,16 +76,11 @@ impl Index<u16> for MemoryMap {
         }
 
         // RIOT Read
-        // TODO: Needs a real implementation
-        // The first thing we encountered was a timer, we are going to assume
-        // that the timer was written to and the programmer is waiting for it
-        // to reach zero. This will drive out the implementation of clock cycles
         if (!index & 0x1000) == 0x1000 && (index & 0x0480) != 0 {
             // INTIM timer check
-            // if index & 0x0284 == 0x0284 {
-            //     return &1; // anything but zero
+            // if index & 0x0284 == 0x0284 { return &1; // anything but zero
             // }
-            return &0;
+            return self.riot.get(index);
         }
 
         todo!("index not implemented for {:04X}", index);

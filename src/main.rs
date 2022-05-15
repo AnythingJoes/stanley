@@ -100,14 +100,8 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
         Print("RIOT Write"),
         cursor::MoveToNextLine(1),
     )?;
-    for i in 0..2 {
-        for j in 0..16 {
-            let tia = chip.mmap.tia[i * 16 + j];
-            queue!(stdout, Print(format!("{:02X} ", tia)))?
-        }
-
-        queue!(stdout, cursor::MoveToNextLine(1))?
-    }
+    let riot = &chip.mmap.riot;
+    queue!(stdout, Print(format!("{:?} ", riot)))?;
 
     queue!(
         stdout,
@@ -153,7 +147,7 @@ fn main() {
         } else {
             let cycles_run = chip.cycles - previous_cycles;
             if cycles_run > 10 {
-                let cycle_time = Duration::from_nanos(cycles_run * 837);
+                let cycle_time = Duration::from_nanos((cycles_run * 837) as u64);
                 timer.pause_for(cycle_time);
                 previous_cycles = chip.cycles;
             }

@@ -19,7 +19,7 @@ pub struct Nmos6502 {
     /// zero
     pub z: bool,
     // TODO: Temporarily store the clock
-    pub cycles: u64,
+    pub cycles: usize,
     /// Memory Map
     pub mmap: MemoryMap,
 }
@@ -42,5 +42,10 @@ impl Nmos6502 {
         let byte = self.mmap[self.pc];
         self.pc += 1;
         byte
+    }
+
+    pub fn tick(&mut self, clocks: usize) {
+        self.cycles += clocks;
+        self.mmap.riot.tick(clocks)
     }
 }
