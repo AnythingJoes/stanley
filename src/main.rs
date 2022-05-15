@@ -4,13 +4,21 @@ use std::{
     io::{stdout, Write},
 };
 
-pub use crossterm::style::Color;
+use clap::Parser;
+use crossterm::style::Color;
 use crossterm::{
     cursor, execute, queue,
     style::{self, Print},
     terminal::{self, ClearType},
 };
-pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    #[clap(short, long)]
+    debug: bool,
+}
 
 #[derive(Debug)]
 struct Nmos6502 {
@@ -19,7 +27,10 @@ struct Nmos6502 {
     // A accumulator register
     a: u8,
     memory: [u8; 256],
+    // Program counter
     pc: u16,
+    // Stack pointer
+    sp: u8,
     // Address range 0x1000 to 0x2000
     program: [u8; 4096],
     // FLAGS
@@ -28,6 +39,18 @@ struct Nmos6502 {
 }
 
 impl Nmos6502 {
+    fn new(program: [u8; 4096]) -> Self {
+        Nmos6502 {
+            program,
+            x: 0,
+            a: 0,
+            z: false,
+            memory: [0; 256],
+            pc: 0x1000,
+            sp: 0,
+        }
+    }
+
     fn next_byte(&mut self) -> u8 {
         let byte = self.program[(self.pc - 0x1000) as usize];
         self.pc += 1;
@@ -74,12 +97,19 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
         Print("NMOS 6502"),
         cursor::MoveToNextLine(1),
         Print(format!(
-            "Registers: X({:X}) Y({:X}) A({:X})   |",
-            chip.x, 0, chip.pc
+            "Registers: X({:02X}) Y({:02X}) A({:02X})   |",
+            chip.x, 0, chip.a
         )),
-        Print(format!("PC: {:X}   |", chip.pc)),
+        Print(format!("PC: {:02X}   |", chip.pc)),
+        Print(format!("SP: {:02X}", chip.sp)),
+        cursor::MoveToNextLine(1),
         cursor::MoveToNextLine(1),
         Print(format!("Flags: Z({})", chip.z)),
+        cursor::MoveToNextLine(2),
+        Print(format!(
+            "Next Instruction: {:02X}",
+            chip.program[(chip.pc - 0x1000) as usize]
+        )),
         cursor::MoveToNextLine(2),
         cursor::MoveRight(5),
         Print("MMappd Hardware"),
@@ -89,7 +119,7 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
     for i in 0..8 {
         for j in 0..16 {
             let memory = chip.memory[i * 16 + j];
-            queue!(stdout, Print(format!("{:X} ", memory)))?
+            queue!(stdout, Print(format!("{:02X} ", memory)))?
         }
 
         queue!(stdout, cursor::MoveToNextLine(1))?
@@ -103,7 +133,7 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
     for i in 0..8 {
         for j in 0..16 {
             let memory = chip.memory[128 + i * 16 + j];
-            queue!(stdout, Print(format!("{:X} ", memory)))?
+            queue!(stdout, Print(format!("{:02X} ", memory)))?
         }
 
         queue!(stdout, cursor::MoveToNextLine(1))?
@@ -113,22 +143,22 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
 }
 
 fn main() {
-    set_up_terminal().expect("terminal could not be setup");
+    let Args { debug } = Args::parse();
+
+    if debug {
+        set_up_terminal().expect("terminal could not be setup");
+    }
 
     let byte_vec = fs::read("./tictactoe.bin").unwrap();
-    let mut chip = Nmos6502 {
-        x: 0,
-        a: 0,
-        z: false,
-        memory: [1; 256],
-        pc: 0x1000,
-        program: byte_vec
-            .try_into()
-            .expect("Program expected to be 4096 bytes was not"),
-    };
+    let program = byte_vec
+        .try_into()
+        .expect("Program expected to be 4096 bytes was not");
+    let mut chip = Nmos6502::new(program);
 
     loop {
-        clear_terminal().expect("couldn't clear terminal");
+        if debug {
+            clear_terminal().expect("couldn't clear terminal");
+        }
         let instruction = chip.next_byte();
 
         match instruction {
@@ -148,13 +178,24 @@ fn main() {
             // FLAGS: N Z
             0xA9 => {
                 // Mode: Immediate
-                // Syntax: LDX #$44
+                // Syntax: LDA #$44
                 // Hex: $A9
                 // Width: 2
                 // Timing: 2
                 let arg = chip.next_byte();
                 chip.z = arg == 0;
                 chip.a = arg;
+            }
+            // STA
+            // FLAGS: None
+            0x85 => {
+                // Mode: Zero Page
+                // Syntax: STA $44
+                // Hex: $85
+                // Width: 2
+                // Timing: 3
+                let arg = chip.next_byte();
+                chip.memory[arg as usize] = chip.a;
             }
             // STA
             // FLAGS: None
@@ -175,9 +216,11 @@ fn main() {
                 // Hex: $E8
                 // Width: 1
                 // Timing: 2
-                chip.x += 1;
+                chip.x = chip.x.wrapping_add(1);
                 chip.z = chip.x == 0;
             }
+            // Branching Instructions
+            //
             // BNE
             // FLAGS:
             0xD0 => {
@@ -186,17 +229,32 @@ fn main() {
                 // Width: 1
                 // Timing: 2, +1 if taken, +1 if across page boundry
                 let arg = chip.next_byte() as i8;
-                if chip.z {
+                if !chip.z {
                     chip.pc = chip.pc.wrapping_add(arg as u16);
                 }
             }
+            // Stack Instructions
+            //
+            // TXS
+            // FLAGS:
+            0x9A => {
+                // Syntax: TXS
+                // Hex: $9A
+                // Width: 1
+                // Timing: 2
+                chip.sp = chip.x;
+            }
             instruction => {
-                eprintln!("Unkown instruction: {:X}", instruction);
-                break;
+                if debug {
+                    std::thread::sleep(std::time::Duration::from_millis(5000));
+                    teardown_terminal().expect("terminal could not be torn down");
+                }
+                panic!("Unkown instruction: {:02X}", instruction);
             }
         }
-        draw_terminal(&chip).expect("couldn't draw terminal");
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        if debug {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            draw_terminal(&chip).expect("couldn't draw terminal");
+        }
     }
-    teardown_terminal().expect("terminal could not be setup");
 }
