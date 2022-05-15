@@ -4,7 +4,7 @@ pub mod instructions;
 mod riot;
 pub mod tia;
 
-use instructions::Instruction;
+use instructions::InstructionValue;
 use riot::Riot;
 use tia::Tia;
 
@@ -92,14 +92,15 @@ impl System {
         self.tia.tick(clocks);
     }
 
-    pub fn execute(&mut self, inst: impl Instruction) {
-        let ticks = inst.execute(self);
+    pub fn execute(&mut self, inst: InstructionValue) -> super::Result<()> {
+        let ticks = inst.execute(self)?;
         self.tick(ticks);
         self.riot.timer_reset = false;
         if self.tia.wsync {
             self.tick(self.tia.wsync_ticks());
             self.tia.wsync = false;
         }
+        Ok(())
     }
 }
 

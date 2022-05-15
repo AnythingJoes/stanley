@@ -18,7 +18,7 @@ use crossterm::{
 };
 
 mod system;
-use system::instructions::*;
+use system::instructions::InstructionValue;
 use system::tia::{HEIGHT, WIDTH};
 use system::System;
 
@@ -168,40 +168,16 @@ fn main() -> Result<()> {
             }
         }
 
-        let instruction = system.next_byte();
+        let instruction: InstructionValue = system.next_byte().try_into()?;
 
-        match instruction {
-            inst if inst == LdxI::CODE => system.execute(LdxI),
-            inst if inst == LdaI::CODE => system.execute(LdaI),
-            inst if inst == LdaZ::CODE => system.execute(LdaZ),
-            inst if inst == LdaA::CODE => system.execute(LdaA),
-            inst if inst == LdaAY::CODE => system.execute(LdaAY),
-            inst if inst == StaZ::CODE => system.execute(StaZ),
-            inst if inst == StaZX::CODE => system.execute(StaZX),
-            inst if inst == StaA::CODE => system.execute(StaA),
-            inst if inst == StxA::CODE => system.execute(StxA),
-            inst if inst == Inx::CODE => system.execute(Inx),
-            inst if inst == Dex::CODE => system.execute(Dex),
-            inst if inst == Bne::CODE => system.execute(Bne),
-            inst if inst == Bmi::CODE => system.execute(Bmi),
-            inst if inst == Jmp::CODE => system.execute(Jmp),
-            inst if inst == Txs::CODE => system.execute(Txs),
-            inst if inst == Txa::CODE => system.execute(Txa),
-            inst if inst == Tay::CODE => system.execute(Tay),
-            inst if inst == Jsr::CODE => system.execute(Jsr),
-            inst if inst == Rts::CODE => system.execute(Rts),
-            inst if inst == Eor::CODE => system.execute(Eor),
-            inst if inst == Lsr::CODE => system.execute(Lsr),
-            inst if inst == Nop::CODE => system.execute(Nop),
-            inst => {
-                if debug {
-                    std::thread::sleep(std::time::Duration::from_millis(5000));
-                    break;
-                }
-                eprintln!("Time: {}", total_time.elapsed().as_nanos());
-                eprintln!("Clocks: {}", system.clocks);
-                panic!("Unknown instruction: {:02X}", inst);
+        if let Err(e) = system.execute(instruction) {
+            if debug {
+                std::thread::sleep(std::time::Duration::from_millis(5000));
+                break;
             }
+            eprintln!("Time: {}", total_time.elapsed().as_nanos());
+            eprintln!("Clocks: {}", system.clocks);
+            return Err(e);
         }
         if debug {
             draw_terminal(&mut system).expect("couldn't draw terminal");
