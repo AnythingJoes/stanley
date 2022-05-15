@@ -135,7 +135,6 @@ impl Tia {
 
     pub fn is_drawing(&self) -> bool {
         Tia::row(self.color_clocks) < DRAWING_ROWS
-            && Tia::column(self.color_clocks) < DRAWING_COLUMNS
     }
 
     fn get_playfield(&self) -> u64 {
