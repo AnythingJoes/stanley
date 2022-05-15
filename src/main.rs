@@ -7,7 +7,7 @@ use std::{
 use clap::Parser;
 
 mod system;
-use system::instructions::InstructionValue;
+use system::instructions::Instruction;
 use system::System;
 
 mod timer;
@@ -90,7 +90,7 @@ fn main() -> Result<()> {
             event => system.tia.input_event(event),
         };
 
-        let instruction: InstructionValue = system.next_byte().try_into()?;
+        let instruction: Instruction = system.next_byte().try_into()?;
 
         if let Err(e) = system.execute(instruction) {
             eprintln!("Time: {}", total_time.elapsed().as_nanos());

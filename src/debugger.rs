@@ -15,7 +15,7 @@ use crossterm::{
 };
 
 use super::Result;
-use crate::system::{instructions::InstructionValue, System};
+use crate::system::{instructions::Instruction, System};
 
 pub enum BreakPointType {
     Number(u16),
@@ -84,7 +84,7 @@ impl ActiveDebugger {
                 .map(|val| format!("{val}:\r\n  "))
                 .unwrap_or_else(|| "  ".to_owned());
 
-            let inst_value: std::result::Result<InstructionValue, _> = (*inst.1).try_into();
+            let inst_value: std::result::Result<Instruction, _> = (*inst.1).try_into();
             // TODO: This assumes that all code blocks are contiguous, they are not. This will need
             // to get fixed
             if in_data {

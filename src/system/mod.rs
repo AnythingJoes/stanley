@@ -4,7 +4,7 @@ pub mod instructions;
 mod riot;
 pub mod tia;
 
-use instructions::InstructionValue;
+use instructions::Instruction;
 use riot::Riot;
 use tia::Tia;
 
@@ -92,7 +92,7 @@ impl System {
         self.tia.tick(clocks);
     }
 
-    pub fn execute(&mut self, inst: InstructionValue) -> super::Result<()> {
+    pub fn execute(&mut self, inst: Instruction) -> super::Result<()> {
         let ticks = inst.execute(self)?;
         self.tick(ticks);
         self.riot.timer_reset = false;
@@ -100,6 +100,27 @@ impl System {
         let wsync_clocks = self.tia.sync().value;
         self.tick(wsync_clocks);
         Ok(())
+    }
+
+    pub fn status(&self) -> u8 {
+        (self.chip.c as u8)
+            | ((self.chip.z as u8) << 1)
+            | ((self.chip.i as u8) << 2)
+            | ((self.chip.d as u8) << 3)
+            | ((self.chip.b as u8) << 4)
+            | (1 << 5)
+            | ((self.chip.v as u8) << 6)
+            | ((self.chip.n as u8) << 7)
+    }
+
+    pub fn status_set(&mut self, register: u8) {
+        self.chip.c = register & 1 != 0;
+        self.chip.z = register & 2 != 0;
+        self.chip.i = register & 4 != 0;
+        self.chip.d = register & 8 != 0;
+        self.chip.b = register & 16 != 0;
+        self.chip.v = register & 64 != 0;
+        self.chip.n = register & 128 != 0;
     }
 }
 
@@ -142,8 +163,16 @@ pub struct Nmos6507 {
     pub n: bool,
     /// zero
     pub z: bool,
-    /// cary
+    /// carry
     pub c: bool,
+    /// overflow
+    pub v: bool,
+    /// decimal
+    pub d: bool,
+    /// interrupt
+    pub i: bool,
+    /// break
+    pub b: bool,
 }
 
 impl Nmos6507 {
