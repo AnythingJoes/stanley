@@ -243,7 +243,7 @@ fn main() {
             // JSR
             // FLAGS:
             0x20 => {
-                // Syntax: JSR
+                // Syntax: JSR Label
                 // Hex: $20
                 // Width: 3
                 // Timing: 6
@@ -255,9 +255,22 @@ fn main() {
                 let ret_high = (chip.pc >> 8) as u8;
                 chip.mmap[chip.sp as u16] = ret_high;
                 chip.sp -= 1;
-                chip.mmap[chip.sp as u16] = ret_low;
+                chip.mmap[chip.sp as u16] = ret_low - 1;
                 chip.sp -= 1;
-                chip.pc = jump_address
+                chip.pc = jump_address;
+            }
+            // RTS
+            // FLAGS:
+            0x60 => {
+                // Syntax: RTS
+                // Hex: $60
+                // Width: 1
+                // Timing: 6
+                chip.sp += 1;
+                let low = chip.mmap[chip.sp as u16] as u16;
+                chip.sp += 1;
+                let high = chip.mmap[chip.sp as u16] as u16;
+                chip.pc = (high << 8) + low + 1;
             }
             instruction => {
                 if debug {

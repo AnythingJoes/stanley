@@ -56,8 +56,6 @@ impl IndexMut<u16> for MemoryMap {
         }
 
         // RIOT
-        // %xxx0 xx1x 1??? ????
-        // 0001 1111
         if (!index & 0x1000) == 0x1000 && (index & 0x0480) != 0 {
             return &mut self.riot[(index & 0x001F) as usize];
         }
