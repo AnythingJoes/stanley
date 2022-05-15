@@ -431,3 +431,20 @@ impl Instruction for Lsr {
         2
     }
 }
+
+// Other codes
+//
+// NOP
+// FLAGS:
+// Syntax: NOP
+// Mode: Implied
+// Hex: $EA
+// Width: 1
+// Timing: 2
+pub struct Nop;
+impl Instruction for Nop {
+    const CODE: u8 = 0xEA;
+    fn execute(&self, chip: &mut Nmos6502) -> usize {
+        2
+    }
+}

@@ -177,6 +177,7 @@ fn main() {
             inst if inst == Rts::CODE => chip.execute(Rts),
             inst if inst == Eor::CODE => chip.execute(Eor),
             inst if inst == Lsr::CODE => chip.execute(Lsr),
+            inst if inst == Nop::CODE => chip.execute(Nop),
             inst => {
                 if debug {
                     std::thread::sleep(std::time::Duration::from_millis(5000));

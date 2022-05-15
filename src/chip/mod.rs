@@ -21,6 +21,8 @@ pub struct Nmos6502 {
     pub n: bool,
     /// zero
     pub z: bool,
+    /// cary
+    pub c: bool,
     // TODO: Temporarily store the clock
     pub cycles: usize,
     /// Memory Map
@@ -34,6 +36,7 @@ impl Nmos6502 {
             y: 0,
             a: 0,
             n: false,
+            c: false,
             z: false,
             pc: 0x1000,
             sp: 0,
