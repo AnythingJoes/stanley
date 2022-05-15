@@ -34,9 +34,10 @@ impl Timer {
     // they should
     pub fn pause_for(&mut self, dur: Duration) {
         let elapsed = self.elapsed();
-        let actual = dur
-            .checked_sub(elapsed)
-            .expect("Execution took way longer than it should have. Something is very wrong!");
+        if dur < elapsed {
+            self.runover += elapsed;
+        }
+        let actual = dur.saturating_sub(elapsed);
         if self.runover < actual {
             let should_sleep = actual - self.runover;
             let now = Instant::now();

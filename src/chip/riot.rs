@@ -82,7 +82,7 @@ mod tests {
             ..Default::default()
         };
         riot.set(0x15, 3);
-        assert!(riot.timint);
+        assert!(!riot.timint);
         assert_eq!(*riot.get(0x0284), 3);
 
         riot.tick(8);
@@ -98,7 +98,7 @@ mod tests {
         assert_eq!(*riot.get(0x0284), 0xFF);
 
         riot.set(0x15, 5);
-        assert!(riot.timint);
+        assert!(!riot.timint);
         riot.tick(49);
 
         assert!(riot.timint);

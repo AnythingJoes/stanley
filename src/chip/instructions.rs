@@ -444,7 +444,7 @@ impl Instruction for Lsr {
 pub struct Nop;
 impl Instruction for Nop {
     const CODE: u8 = 0xEA;
-    fn execute(&self, chip: &mut Nmos6502) -> usize {
+    fn execute(&self, _chip: &mut Nmos6502) -> usize {
         2
     }
 }
