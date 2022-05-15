@@ -333,10 +333,8 @@ fn execute_eor_i(system: &mut System) -> usize {
 // Width: 1
 // Timing: 2
 fn execute_lsr_acc(system: &mut System) -> usize {
-    let arg = system.next_byte();
     system.chip.c = system.chip.a & 0x01 == 0;
     system.chip.a >>= 1;
-    system.chip.a ^= arg;
     2
 }
 

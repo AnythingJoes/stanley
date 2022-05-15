@@ -239,7 +239,7 @@ impl Debugger for ActiveDebugger {
             }
         }
 
-        if let Ok(true) = poll(Duration::from_millis(10)) {
+        if let Ok(true) = poll(Duration::from_millis(1)) {
             if let Ok(CTEvent::Key(KeyEvent { code, modifiers })) = read() {
                 if code == KeyCode::Esc
                     || (code == KeyCode::Char('c') && modifiers.contains(KeyModifiers::CONTROL))

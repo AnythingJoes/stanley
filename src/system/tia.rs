@@ -158,9 +158,12 @@ impl Tia {
     }
 
     fn get_playfield(&self) -> u64 {
-        let playfield = ((self.pf0 as u64) << 12) + ((self.pf1 as u64) << 8) + (self.pf2 as u64);
+        let playfield = ((self.pf0.reverse_bits() as u64) << 16)
+            + ((self.pf1 as u64) << 8)
+            + (self.pf2.reverse_bits() as u64);
         (playfield << 20)
             + if self.pf_reflected {
+                // TODO: This is wrong it 64 bits long, needs to be shifted
                 playfield.reverse_bits()
             } else {
                 playfield
