@@ -329,6 +329,23 @@ impl Instruction for Txa {
     }
 }
 
+// TAY
+// FLAGS: N Z
+// Syntax: TAY
+// Hex: $A8
+// Width: 1
+// Timing: 2
+pub struct Tay;
+impl Instruction for Tay {
+    const CODE: u8 = 0xA8;
+    fn execute(&self, chip: &mut Nmos6502) -> usize {
+        chip.y = chip.a;
+        chip.z = chip.y == 0;
+        chip.n = (chip.y as i8) < 0;
+        2
+    }
+}
+
 // Subroutine Instructions
 //
 // JSR
