@@ -73,6 +73,13 @@ fn draw_terminal(system: &mut System) -> Result<()> {
     queue!(stdout, cursor::MoveToNextLine(1),)?;
     let riot = &system.riot;
     queue!(stdout, Print(format!("{} ", riot)))?;
+    queue!(
+        stdout,
+        cursor::MoveToNextLine(1),
+        Print(format!("{:?} ", system.tia)),
+        cursor::MoveToNextLine(1),
+        Print(format!("{} ", system.tia.wsync_ticks())),
+    )?;
 
     stdout.flush()?;
     Ok(())

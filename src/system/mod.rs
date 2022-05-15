@@ -86,12 +86,17 @@ impl System {
 
     pub fn tick(&mut self, clocks: usize) {
         self.clocks += clocks;
-        self.riot.tick(clocks)
+        self.riot.tick(clocks);
+        self.tia.tick(clocks);
     }
 
     pub fn execute(&mut self, inst: impl Instruction) {
         let ticks = inst.execute(self);
-        self.tick(ticks)
+        self.tick(ticks);
+        if self.tia.wsync {
+            self.tick(self.tia.wsync_ticks());
+            self.tia.wsync = false;
+        }
     }
 }
 
@@ -117,7 +122,10 @@ RAM\r\n",
     }
 }
 
-#[derive(Default)]
+const COLOR_CLOCKS_PER_LINE: usize = 228;
+const SCAN_LINES: usize = 262;
+const COLOR_CLOCKS_PER_FRAME: usize = COLOR_CLOCKS_PER_LINE * SCAN_LINES;
+#[derive(Debug, Default)]
 pub struct Tia {
     vsync: bool,
     vblank: bool,
@@ -133,6 +141,9 @@ pub struct Tia {
     pf0: u8,
     pf1: u8,
     pf2: u8,
+
+    // color clocks this frame
+    color_clocks: usize,
 }
 
 impl Tia {
@@ -169,6 +180,14 @@ impl Tia {
             return 0b1000_0000;
         }
         unimplemented!("Tia get not implemented for {:04X} index", index);
+    }
+
+    fn tick(&mut self, clocks: usize) {
+        self.color_clocks = (self.color_clocks + clocks * 3) % COLOR_CLOCKS_PER_FRAME;
+    }
+
+    pub fn wsync_ticks(&self) -> usize {
+        (COLOR_CLOCKS_PER_LINE - self.color_clocks % COLOR_CLOCKS_PER_LINE) / 3
     }
 }
 
