@@ -139,7 +139,6 @@ mod tests {
 
     #[test]
     fn program_read() {
-        // TODO: lower 4k
         let program = [1u8; PROGRAM_SIZE];
         let mut system = System::new(program);
         assert_eq!(system.memory_get(0xF000), 1);

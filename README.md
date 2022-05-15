@@ -10,7 +10,7 @@ Atari 2600 Emulator in Rust
     - [x] Implement riot ram
     - [ ] Implement riot player input
 - [] Implement tia
-    - [x] Implement WSYNC
+    - [] Implement WSYNC
 - [] Add graphics
 - [] Add sound
 - [] Handle bank switching cartridges

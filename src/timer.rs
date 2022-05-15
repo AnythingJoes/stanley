@@ -35,7 +35,7 @@ impl Timer {
     pub fn pause_for(&mut self, dur: Duration) {
         let elapsed = self.elapsed();
         if dur < elapsed {
-            self.runover += elapsed;
+            self.runover += elapsed - dur;
         }
         let actual = dur.saturating_sub(elapsed);
         if self.runover < actual {
