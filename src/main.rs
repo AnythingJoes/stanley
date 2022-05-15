@@ -156,20 +156,20 @@ fn main() {
         let instruction = chip.next_byte();
 
         match instruction {
-            inst if inst == LdxI::CODE => LdxI::execute(&mut chip),
-            inst if inst == LdaI::CODE => LdaI::execute(&mut chip),
-            inst if inst == LdaZ::CODE => LdaZ::execute(&mut chip),
-            inst if inst == LdaA::CODE => LdaA::execute(&mut chip),
-            inst if inst == StaZ::CODE => StaZ::execute(&mut chip),
-            inst if inst == StaZX::CODE => StaZX::execute(&mut chip),
-            inst if inst == StxA::CODE => StxA::execute(&mut chip),
-            inst if inst == Inx::CODE => Inx::execute(&mut chip),
-            inst if inst == Bne::CODE => Bne::execute(&mut chip),
-            inst if inst == Bmi::CODE => Bmi::execute(&mut chip),
-            inst if inst == Txs::CODE => Txs::execute(&mut chip),
-            inst if inst == Jsr::CODE => Jsr::execute(&mut chip),
-            inst if inst == Rts::CODE => Rts::execute(&mut chip),
-            inst if inst == Eor::CODE => Eor::execute(&mut chip),
+            inst if inst == LdxI::CODE => chip.execute(LdxI),
+            inst if inst == LdaI::CODE => chip.execute(LdaI),
+            inst if inst == LdaZ::CODE => chip.execute(LdaZ),
+            inst if inst == LdaA::CODE => chip.execute(LdaA),
+            inst if inst == StaZ::CODE => chip.execute(StaZ),
+            inst if inst == StaZX::CODE => chip.execute(StaZX),
+            inst if inst == StxA::CODE => chip.execute(StxA),
+            inst if inst == Inx::CODE => chip.execute(Inx),
+            inst if inst == Bne::CODE => chip.execute(Bne),
+            inst if inst == Bmi::CODE => chip.execute(Bmi),
+            inst if inst == Txs::CODE => chip.execute(Txs),
+            inst if inst == Jsr::CODE => chip.execute(Jsr),
+            inst if inst == Rts::CODE => chip.execute(Rts),
+            inst if inst == Eor::CODE => chip.execute(Eor),
             inst => {
                 if debug {
                     std::thread::sleep(std::time::Duration::from_millis(5000));

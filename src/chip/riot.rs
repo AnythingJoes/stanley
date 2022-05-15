@@ -77,10 +77,12 @@ mod tests {
 
     #[test]
     fn test_8_clock_timer() {
-        let mut riot = Riot::default();
-        riot.timint = true;
+        let mut riot = Riot {
+            timint: true,
+            ..Default::default()
+        };
         riot.set(0x15, 3);
-        assert_eq!(riot.timint, false);
+        assert!(riot.timint);
         assert_eq!(*riot.get(0x0284), 3);
 
         riot.tick(8);
@@ -96,10 +98,10 @@ mod tests {
         assert_eq!(*riot.get(0x0284), 0xFF);
 
         riot.set(0x15, 5);
-        assert_eq!(riot.timint, false);
+        assert!(riot.timint);
         riot.tick(49);
 
-        assert_eq!(riot.timint, true);
+        assert!(riot.timint);
         assert_eq!(*riot.get(0x0284), 0xFE);
         // assert_eq!(riot.timint, false)
     }

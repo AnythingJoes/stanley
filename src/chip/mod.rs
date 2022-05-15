@@ -48,4 +48,9 @@ impl Nmos6502 {
         self.cycles += clocks;
         self.mmap.riot.tick(clocks)
     }
+
+    pub fn execute(&mut self, inst: impl Instruction) {
+        let ticks = inst.execute(self);
+        self.tick(ticks)
+    }
 }
