@@ -11,6 +11,10 @@ use crossterm::{
     style::{self, Print},
     terminal::{self, ClearType},
 };
+
+mod chip;
+use chip::Nmos6502;
+
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 #[derive(Parser)]
@@ -18,44 +22,6 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 struct Args {
     #[clap(short, long)]
     debug: bool,
-}
-
-#[derive(Debug)]
-struct Nmos6502 {
-    // X indexing register
-    x: u8,
-    // A accumulator register
-    a: u8,
-    memory: [u8; 256],
-    // Program counter
-    pc: u16,
-    // Stack pointer
-    sp: u8,
-    // Address range 0x1000 to 0x2000
-    program: [u8; 4096],
-    // FLAGS
-    // zero
-    z: bool,
-}
-
-impl Nmos6502 {
-    fn new(program: [u8; 4096]) -> Self {
-        Nmos6502 {
-            program,
-            x: 0,
-            a: 0,
-            z: false,
-            memory: [0; 256],
-            pc: 0x1000,
-            sp: 0,
-        }
-    }
-
-    fn next_byte(&mut self) -> u8 {
-        let byte = self.program[(self.pc - 0x1000) as usize];
-        self.pc += 1;
-        byte
-    }
 }
 
 fn set_up_terminal() -> Result<()> {
@@ -108,7 +74,7 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
         cursor::MoveToNextLine(2),
         Print(format!(
             "Next Instruction: {:02X}",
-            chip.program[(chip.pc - 0x1000) as usize]
+            chip.mmap.program[(chip.pc - 0x1000) as usize]
         )),
         cursor::MoveToNextLine(2),
         cursor::MoveRight(5),
@@ -118,7 +84,7 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
 
     for i in 0..8 {
         for j in 0..16 {
-            let memory = chip.memory[i * 16 + j];
+            let memory = chip.mmap.memory[i * 16 + j];
             queue!(stdout, Print(format!("{:02X} ", memory)))?
         }
 
@@ -132,7 +98,7 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
     )?;
     for i in 0..8 {
         for j in 0..16 {
-            let memory = chip.memory[128 + i * 16 + j];
+            let memory = chip.mmap.memory[128 + i * 16 + j];
             queue!(stdout, Print(format!("{:02X} ", memory)))?
         }
 
@@ -195,7 +161,7 @@ fn main() {
                 // Width: 2
                 // Timing: 3
                 let arg = chip.next_byte();
-                chip.memory[arg as usize] = chip.a;
+                chip.mmap.memory[arg as usize] = chip.a;
             }
             // STA
             // FLAGS: None
@@ -207,7 +173,7 @@ fn main() {
                 // Timing: 4
                 let arg = chip.next_byte();
                 let index = (arg + chip.x) as usize;
-                chip.memory[index] = chip.a;
+                chip.mmap.memory[index] = chip.a;
             }
             // INX
             // FLAGS: N z
