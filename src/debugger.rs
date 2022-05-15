@@ -1,6 +1,7 @@
 use std::{
-    collections::BTreeMap,
-    io::{stdout, Write},
+    collections::{BTreeMap, HashMap},
+    fs,
+    io::{stdout, BufRead, Write},
     time::Duration,
 };
 
@@ -16,12 +17,29 @@ use crossterm::{
 use super::Result;
 use crate::system::{instructions::InstructionValue, System};
 
+pub enum BreakPointType {
+    Number(u16),
+    Symbol(String),
+}
+
+pub fn try_parse_breakpoint(s: &str) -> std::result::Result<BreakPointType, String> {
+    Ok(match u16::from_str_radix(s, 16) {
+        Ok(int) => BreakPointType::Number(int),
+        Err(_) => BreakPointType::Symbol(s.to_owned()),
+    })
+}
+
 pub trait Debugger {
-    fn setup(&mut self, _program: [u8; 4096]) -> Result<()> {
+    fn setup(
+        &mut self,
+        _program: [u8; 4096],
+        _breakpoint: Option<BreakPointType>,
+        _symbol_file: Option<String>,
+    ) -> Result<()> {
         Ok(())
     }
 
-    fn debug_loop(&self, _system: &System) -> Result<()> {
+    fn debug_loop(&mut self, _system: &System) -> Result<()> {
         Ok(())
     }
 
@@ -46,6 +64,9 @@ impl Debugger for NullDebugger {}
 #[derive(Default)]
 pub struct ActiveDebugger {
     disassembly: Option<BTreeMap<u16, String>>,
+    breakpoint: Option<u16>,
+    symbol_map: HashMap<u16, String>,
+    in_breakpoint: bool,
 }
 
 impl ActiveDebugger {
@@ -56,41 +77,91 @@ impl ActiveDebugger {
 
         while program_iter.peek().is_some() {
             let inst = program_iter.next().unwrap();
-            let key = inst.0 + 0x1000;
+            let key = (inst.0 + 0x1000) as u16;
+            let key_str = self
+                .symbol_map
+                .get(&key)
+                .map(|val| format!("{val}:\r\n  "))
+                .unwrap_or_else(|| "  ".to_owned());
+
             let inst_value: std::result::Result<InstructionValue, _> = (*inst.1).try_into();
             if in_data {
-                let value = format!("{key:04X}: {}", inst.1);
+                let value = format!("{}{}", key_str, inst.1);
                 disassembly.insert(key as u16, value);
                 continue;
             }
 
             if let Ok(inst_value) = inst_value {
                 let value = format!(
-                    "{key:04X}: {} {}",
+                    "{}{} {}",
+                    key_str,
                     inst_value,
                     inst_value.format_arguments(&mut program_iter)
                 );
                 disassembly.insert(key as u16, value);
             } else {
                 in_data = true;
-                let value = format!("{key:04X}: {}", inst.1);
+                let value = format!("{}{}", key_str, inst.1);
                 disassembly.insert(key as u16, value);
             }
         }
         self.disassembly.replace(disassembly);
     }
+
+    fn parse_symbol_file(&mut self, symbol_file: Option<String>) -> Result<()> {
+        if symbol_file.is_none() {
+            return Ok(());
+        }
+        let symbol_file = symbol_file.unwrap();
+        let file = fs::read(symbol_file).map_err(|e| e.to_string())?;
+        let map: HashMap<u16, String> = file
+            .lines()
+            .filter_map(|line| line.ok())
+            .filter_map(|line| {
+                if line.starts_with("---") {
+                    return None;
+                }
+                let mut words = line.split_whitespace();
+                let name = words.next().unwrap();
+                let address = u16::from_str_radix(words.next().unwrap(), 16).unwrap() & 0x1FFF;
+                Some((address, name.to_owned()))
+            })
+            .collect();
+        self.symbol_map = map;
+        Ok(())
+    }
 }
 
 impl Debugger for ActiveDebugger {
-    fn setup(&mut self, program: [u8; 4096]) -> super::Result<()> {
+    fn setup(
+        &mut self,
+        program: [u8; 4096],
+        breakpoint: Option<BreakPointType>,
+        symbol_file: Option<String>,
+    ) -> super::Result<()> {
         let mut stdout = stdout();
+        self.parse_symbol_file(symbol_file)?;
         self.disassemble(program);
+        self.breakpoint = match breakpoint {
+            Some(BreakPointType::Number(val)) => Some(val),
+            // TODO Handle symbol
+            Some(BreakPointType::Symbol(sym)) => self.symbol_map.iter().find_map(
+                |(&key, value)| {
+                    if *value == sym {
+                        Some(key)
+                    } else {
+                        None
+                    }
+                },
+            ),
+            None => None,
+        };
         execute!(stdout, terminal::EnterAlternateScreen)?;
         terminal::enable_raw_mode()?;
         Ok(())
     }
 
-    fn debug_loop(&self, system: &System) -> super::Result<()> {
+    fn debug_loop(&mut self, system: &System) -> super::Result<()> {
         let mut stdout = stdout();
         queue!(
             stdout,
@@ -123,7 +194,7 @@ impl Debugger for ActiveDebugger {
             .disassembly
             .as_ref()
             .unwrap()
-            .range(current_line - 10..current_line + 10)
+            .range(current_line - 5..current_line + 5)
         {
             if current_line == key {
                 queue!(
@@ -145,8 +216,26 @@ impl Debugger for ActiveDebugger {
                 )?;
             }
         }
-
         stdout.flush()?;
+
+        if let Some(breakpoint) = self.breakpoint {
+            let breakpoint = breakpoint & 0x1FFF;
+            let pc = system.chip.pc & 0x1FFF;
+            if breakpoint == pc || self.in_breakpoint {
+                if let Ok(CTEvent::Key(KeyEvent { code, modifiers })) = read() {
+                    match code {
+                        KeyCode::Esc => return Err("User cancelled execution".into()),
+                        KeyCode::Char('c') if modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Err("User cancelled execution".into());
+                        }
+                        KeyCode::Char('n') => self.in_breakpoint = true,
+                        KeyCode::Char('c') => self.in_breakpoint = false,
+                        _ => {}
+                    }
+                    return Ok(());
+                }
+            }
+        }
 
         if let Ok(true) = poll(Duration::from_millis(10)) {
             if let Ok(CTEvent::Key(KeyEvent { code, modifiers })) = read() {

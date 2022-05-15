@@ -14,7 +14,7 @@ mod timer;
 use timer::Timer;
 
 mod debugger;
-use debugger::get_debugger;
+use debugger::{get_debugger, try_parse_breakpoint, BreakPointType};
 
 mod renderer;
 use renderer::Renderer;
@@ -28,26 +28,35 @@ struct Args {
     debug: bool,
     #[clap(long)]
     disassemble: bool,
+    // TODO: take hex argument
+    #[clap(short, long, parse(try_from_str=try_parse_breakpoint))]
+    breakpoint: Option<BreakPointType>,
+    #[clap(short, long)]
+    symbol_file: Option<String>,
+    file_name: String,
 }
 
 fn main() -> Result<()> {
-    let Args { debug, disassemble } = Args::parse();
+    let Args {
+        debug,
+        disassemble,
+        breakpoint,
+        symbol_file,
+        file_name,
+    } = Args::parse();
 
-    let byte_vec = fs::read("./tictactoe.bin").unwrap();
+    let byte_vec = fs::read(file_name).map_err(|e| e.to_string())?;
     let program = byte_vec
         .try_into()
         .expect("Program expected to be 4096 bytes was not");
     let mut debugger = get_debugger(debug);
 
-    if disassemble {
-        if debug {
-            debugger.dump_disassembly(program);
-            return Ok(());
-        } else {
-            return Err("Must be in debug mode to print disassembly".into());
-        }
+    if debug && disassemble {
+        debugger.dump_disassembly(program);
+        return Ok(());
     }
-    debugger.setup(program)?;
+
+    debugger.setup(program, breakpoint, symbol_file)?;
 
     let mut system = System::new(program);
     let total_time = Instant::now();
@@ -70,19 +79,20 @@ fn main() -> Result<()> {
             previous_clocks = system.clocks;
         }
 
-        let instruction: InstructionValue = system.next_byte().try_into()?;
-
-        if let Err(e) = system.execute(instruction) {
-            eprintln!("Time: {}", total_time.elapsed().as_nanos());
-            eprintln!("Clocks: {}", system.clocks);
-            eprintln!("{}", e);
-            break;
-        }
         if let Err(e) = debugger.debug_loop(&system) {
             eprintln!("{}", e);
             break;
         }
         if let Err(e) = renderer.handle_events() {
+            eprintln!("{}", e);
+            break;
+        }
+
+        let instruction: InstructionValue = system.next_byte().try_into()?;
+
+        if let Err(e) = system.execute(instruction) {
+            eprintln!("Time: {}", total_time.elapsed().as_nanos());
+            eprintln!("Clocks: {}", system.clocks);
             eprintln!("{}", e);
             break;
         }
