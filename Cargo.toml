@@ -10,3 +10,11 @@ crossterm = "0.23.1"
 clap = { version = "3.1.6", features = ["derive"] }
 spin_sleep = "1.1.1"
 fake_clock = "0.3.1"
+
+[dependencies.sdl2]
+version = "0.35"
+default-features = false
+features = ["gfx","mixer","static-link","bundled"]
+
+[dependencies.gl]
+git = "https://github.com/bjz/gl-rs"

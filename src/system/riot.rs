@@ -6,21 +6,24 @@ pub struct Riot {
     clocks: usize,
     clocks_per_interval: usize,
     timint: bool,
+    pub timer_reset: bool,
 }
 
 impl Riot {
     // TODO: There are other things to set other than the timer. This will fail eventually
     pub fn set(&mut self, index: u16, value: u8) {
         self.timint = false;
+        self.timer_reset = true;
         self.timer = value;
-        self.clocks = 0;
         self.clocks_per_interval = match index {
             0x14 => 1,
             0x15 => 8,
             0x16 => 64,
             0x17 => 1024,
-            _ => todo!("RIOT read not implemented for {:X}", index),
+            _ => todo!("RIOT write not implemented for {:X}", index),
         };
+        // The time counts down on the next clock cycle
+        self.clocks = self.clocks_per_interval - 1;
     }
 
     // TODO this only gets timer, there are other values here
@@ -34,7 +37,7 @@ impl Riot {
     }
 
     pub fn tick(&mut self, clocks: usize) {
-        if self.clocks_per_interval == 0 {
+        if self.clocks_per_interval == 0 || self.timer_reset {
             return;
         }
 

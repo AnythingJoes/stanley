@@ -15,6 +15,7 @@ fn sleep(durr: Duration) {
 
 pub struct Timer {
     instant: Instant,
+    render_instant: Instant,
     pub runover: Duration,
 }
 
@@ -22,12 +23,21 @@ impl Timer {
     pub fn start() -> Self {
         Timer {
             instant: Instant::now(),
+            render_instant: Instant::now(),
             runover: Duration::ZERO,
         }
     }
 
     pub fn elapsed(&self) -> Duration {
         self.instant.elapsed()
+    }
+
+    pub fn should_render(&self) -> bool {
+        self.render_instant.elapsed() > Duration::from_millis(16)
+    }
+
+    pub fn did_render(&mut self) {
+        self.render_instant = Instant::now();
     }
 
     // TODO: Fix this thing I didn't expect to happen where instructions seem to take longer than

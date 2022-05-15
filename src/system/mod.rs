@@ -2,9 +2,11 @@ use std::fmt;
 
 pub mod instructions;
 mod riot;
+pub mod tia;
 
 use instructions::Instruction;
 use riot::Riot;
+use tia::Tia;
 
 const MEMORY_SIZE: usize = 0x00FF - 0x0080 + 1;
 const PROGRAM_SIZE: usize = 0x1FFF - 0x1000 + 1;
@@ -93,6 +95,7 @@ impl System {
     pub fn execute(&mut self, inst: impl Instruction) {
         let ticks = inst.execute(self);
         self.tick(ticks);
+        self.riot.timer_reset = false;
         if self.tia.wsync {
             self.tick(self.tia.wsync_ticks());
             self.tia.wsync = false;
@@ -119,75 +122,6 @@ RAM\r\n",
             write!(f, "\r\n")?;
         }
         Ok(())
-    }
-}
-
-const COLOR_CLOCKS_PER_LINE: usize = 228;
-const SCAN_LINES: usize = 262;
-const COLOR_CLOCKS_PER_FRAME: usize = COLOR_CLOCKS_PER_LINE * SCAN_LINES;
-#[derive(Debug, Default)]
-pub struct Tia {
-    vsync: bool,
-    vblank: bool,
-    wsync: bool,
-    // colors
-    colupf: u8,
-    colubk: u8,
-
-    //ctrlpf
-    pf_reflected: bool,
-
-    //pf registers
-    pf0: u8,
-    pf1: u8,
-    pf2: u8,
-
-    // color clocks this frame
-    color_clocks: usize,
-}
-
-impl Tia {
-    fn set(&mut self, index: u16, value: u8) {
-        match index {
-            0x00 => self.vsync = (value & 0x02) != 0,
-            // TODO: vblank does other thing on D6 and D7 pins, will need to be implemented
-            0x01 => self.vblank = (value & 0x02) != 0,
-            0x02 => self.wsync = true,
-            // TODO: RSYNC: can be ignored in most cases. There is one game that depends on this being
-            // handled correctly
-            0x03 => (),
-            0x04..=0x07 => (), // Ignored for now
-            0x08 => self.colupf = value,
-            0x09 => self.colubk = value,
-            // TODO: other parts of ctrlpf
-            0x0A => self.pf_reflected = (value & 0x01) == 1,
-            0x0B..=0x0C => (), // Ignored for now
-            0x0D => self.pf0 = value & 0xF0,
-            0x0E => self.pf1 = value,
-            0x0F => self.pf2 = value,
-            0x10..=0x2C => (), // Ignored for now
-            0x2D..=0x3F => (), // Unused
-            _ => unreachable!("Tia set not implemented for {:04X} index", index),
-        }
-    }
-
-    fn get(&self, index: u16) -> u8 {
-        // TODO: Needs a real implementation
-        // If it ends in 0xC, it's trying to read player 0 input in this case 0
-        // is pressed and 1 in the sign bit is the default state. We want to
-        // return the default state until we implement input
-        if (index & 0x000F) == 0xC {
-            return 0b1000_0000;
-        }
-        unimplemented!("Tia get not implemented for {:04X} index", index);
-    }
-
-    fn tick(&mut self, clocks: usize) {
-        self.color_clocks = (self.color_clocks + clocks * 3) % COLOR_CLOCKS_PER_FRAME;
-    }
-
-    pub fn wsync_ticks(&self) -> usize {
-        (COLOR_CLOCKS_PER_LINE - self.color_clocks % COLOR_CLOCKS_PER_LINE) / 3
     }
 }
 
