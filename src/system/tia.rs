@@ -31,10 +31,19 @@ impl fmt::Debug for Buffer {
 }
 
 #[derive(Debug)]
+enum Nusize {
+    OneCopy,
+    Quad,
+}
+
+#[derive(Debug)]
 pub struct Tia {
     vsync: bool,
     vblank: bool,
     pub wsync: bool,
+
+    set_resp0: bool,
+
     // colors
     colupf: u8,
     colubk: u8,
@@ -53,15 +62,24 @@ pub struct Tia {
     // Input handling
     joystick1_trigger_pressed: bool,
 
+    // Player 1 Sprite
+    nusize0: Nusize,
+    resp0: usize,
+    grp0: u8,
+
     pub buffer: Buffer,
 }
 
 impl Default for Tia {
     fn default() -> Self {
         Tia {
+            // actions to take after clocks are updated
             vsync: false,
             vblank: false,
             wsync: false,
+
+            set_resp0: false,
+
             // colors
             colupf: 0,
             colubk: 0,
@@ -80,6 +98,11 @@ impl Default for Tia {
             // input handling
             joystick1_trigger_pressed: false,
 
+            // player info
+            nusize0: Nusize::OneCopy,
+            resp0: 0,
+            grp0: 0,
+
             buffer: Buffer([0xFF; BUFF_SIZE]),
         }
     }
@@ -95,7 +118,8 @@ impl Tia {
             // TODO: RSYNC: can be ignored in most cases. There is one game that depends on this being
             // handled correctly
             0x03 => (),
-            0x04..=0x07 => (), // Ignored for now
+            0x04 => self.set_player1_nusize(value),
+            0x05..=0x07 => (), // Ignored for now
             0x08 => self.colupf = value,
             0x09 => self.colubk = value,
             // TODO: other parts of ctrlpf
@@ -104,7 +128,10 @@ impl Tia {
             0x0D => self.pf0 = value & 0xF0,
             0x0E => self.pf1 = value,
             0x0F => self.pf2 = value,
-            0x10..=0x2C => (), // Ignored for now
+            0x10 => self.set_resp0 = true,
+            0x11..=0x1A => (), // Ignored for now
+            0x1B => self.grp0 = value,
+            0x1C..=0x2C => (), // Ignored for now
             0x2D..=0x3F => (), // Unused
             _ => unreachable!("Tia set not implemented for {:04X} index", index),
         }
@@ -138,14 +165,29 @@ impl Tia {
             let column = Tia::column(i);
             let line = Tia::row(i);
             if column < DRAWING_COLUMNS && line < DRAWING_ROWS {
+                // Playfield Draw
                 let pixel = line * WIDTH as usize + column;
+                let pixel_start = pixel * STRIDE;
                 let pf_index = 40 - column / STRIDE;
                 let color = if pf & (1 << (pf_index - 1)) != 0 {
                     [0xFF, 0xFF, 0xFF, 0xFF]
                 } else {
                     [0x00, 0x00, 0x00, 0xFF]
                 };
-                self.buffer.0[pixel * STRIDE..=pixel * STRIDE + 3].copy_from_slice(&color);
+                self.buffer.0[pixel_start..=pixel_start + 3].copy_from_slice(&color);
+
+                // GRP0 Draw
+                // grp0[clocks on row - start]
+                if let Nusize::Quad = self.nusize0 {
+                    let sprite_start = self.resp0.wrapping_sub(DRAWING_START_COLUMN);
+                    if column >= sprite_start && column < sprite_start + (8 * 4) {
+                        let offset = column - sprite_start;
+                        if self.grp0 & 1 << (7 - (offset / 4)) != 0 {
+                            self.buffer.0[pixel_start..=pixel_start + 3]
+                                .copy_from_slice(&[0x00, 0x00, 0xFF, 0xFF]);
+                        }
+                    }
+                }
             }
         }
         self.color_clocks =
@@ -164,6 +206,13 @@ impl Tia {
     /// Sync syncs the tia, and returns a number of ticks to advance the clock. Used for the wsync
     /// signal
     pub fn sync(&mut self) -> WsyncClocks {
+        if self.set_resp0 {
+            // TODO; figure out why I have to add 6 clock cycles to the position to get it in the
+            // right place. I can't find anything easily online about a delay
+            self.resp0 = self.beam_position() + 6;
+            self.set_resp0 = false;
+        }
+
         if self.wsync {
             let clocks = WsyncClocks {
                 value: self.wsync_ticks(),
@@ -213,8 +262,17 @@ impl Tia {
     fn scan_line(&self) -> usize {
         self.color_clocks / COLOR_CLOCKS_PER_LINE
     }
+
     fn beam_position(&self) -> usize {
         self.color_clocks % COLOR_CLOCKS_PER_LINE
+    }
+
+    fn set_player1_nusize(&mut self, value: u8) {
+        self.nusize0 = match value {
+            0x00 => Nusize::OneCopy,
+            0x07 => Nusize::Quad,
+            _ => unimplemented!("No size, or number matching {value:02X}"),
+        };
     }
 }
 
@@ -227,7 +285,7 @@ TIA\r\n
 Colors: COLUBK: {:02X} | COLUPF: {:02X} | Current Line: {} | Beam Position: {}\r\n
 VSYNC: {} | VBLANK: {}\r\n
 Playfields: PF0({:08b}) PF1({:08b}) PF2({:08b})\r\n
-Combined Playfield: PF({:040b})\r\n
+Player 1 Sprite: Musize({:?}) RESP0({}) GRP0({:08b})\r\n
             ",
             self.colubk,
             self.colupf,
@@ -238,7 +296,9 @@ Combined Playfield: PF({:040b})\r\n
             self.pf0,
             self.pf1,
             self.pf2,
-            self.get_playfield()
+            self.nusize0,
+            self.resp0,
+            self.grp0,
         )
     }
 }
