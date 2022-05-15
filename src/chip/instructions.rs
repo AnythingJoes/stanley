@@ -208,6 +208,24 @@ impl Instruction for Inx {
     }
 }
 
+// DEX
+// FLAGS: N Z
+// Syntax: DEX
+// Hex: $CA
+// Width: 1
+// Timing: 2
+pub struct Dex;
+impl Instruction for Dex {
+    const CODE: u8 = 0xCA;
+    fn execute(&self, chip: &mut Nmos6502) -> usize {
+        chip.x = chip.x.wrapping_sub(1);
+
+        chip.z = chip.x == 0;
+        chip.n = (chip.x as i8) < 0;
+        2
+    }
+}
+
 // Branching Instructions
 //
 // BNE
