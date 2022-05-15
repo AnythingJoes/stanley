@@ -63,7 +63,7 @@ impl Instruction for LdaZ {
     const CODE: u8 = 0xA5;
     fn execute(&self, chip: &mut Nmos6502) -> usize {
         let arg = chip.next_byte() as u16;
-        let value = chip.mmap[arg];
+        let value = chip.mmap.get(arg);
         chip.z = value == 0;
         chip.n = (value as i8) < 0;
 
@@ -85,7 +85,7 @@ impl Instruction for LdaA {
     fn execute(&self, chip: &mut Nmos6502) -> usize {
         let low = chip.next_byte() as u16;
         let high = chip.next_byte() as u16;
-        let value = chip.mmap[(high << 8) + low];
+        let value = chip.mmap.get((high << 8) + low);
         chip.z = value == 0;
         chip.n = (value as i8) < 0;
 
@@ -108,7 +108,7 @@ impl Instruction for LdaAY {
         let low = chip.next_byte() as u16;
         let high = chip.next_byte() as u16;
         let addr = (high << 8) + low;
-        let value = chip.mmap[addr + (chip.y as u16)];
+        let value = chip.mmap.get(addr + (chip.y as u16));
         chip.z = value == 0;
         chip.n = (value as i8) < 0;
 
@@ -384,9 +384,9 @@ impl Instruction for Rts {
     const CODE: u8 = 0x60;
     fn execute(&self, chip: &mut Nmos6502) -> usize {
         chip.sp += 1;
-        let low = chip.mmap[chip.sp as u16] as u16;
+        let low = chip.mmap.get(chip.sp as u16) as u16;
         chip.sp += 1;
-        let high = chip.mmap[chip.sp as u16] as u16;
+        let high = chip.mmap.get(chip.sp as u16) as u16;
         chip.pc = (high << 8) + low + 1;
         6
     }

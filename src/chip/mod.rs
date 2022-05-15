@@ -46,7 +46,7 @@ impl Nmos6502 {
     }
 
     pub fn next_byte(&mut self) -> u8 {
-        let byte = self.mmap[self.pc];
+        let byte = self.mmap.get(self.pc);
         self.pc += 1;
         byte
     }

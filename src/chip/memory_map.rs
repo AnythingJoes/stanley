@@ -1,5 +1,4 @@
 use super::riot::Riot;
-use std::ops::Index;
 
 /// MemoryMap represents the memory layout of the 2600, including RIOT, TIA, RAM, and Program Memory
 const TIA_SIZE: usize = 64;
@@ -47,20 +46,16 @@ impl MemoryMap {
         }
         todo!("set not implemented for {:04X}", index);
     }
-}
 
-impl Index<u16> for MemoryMap {
-    type Output = u8;
-
-    fn index(&self, index: u16) -> &Self::Output {
+    pub fn get(&mut self, index: u16) -> u8 {
         // Program memory
         if (index & 0x1000) != 0 {
-            return &self.program[(index & 0x0FFF) as usize];
+            return self.program[(index & 0x0FFF) as usize];
         }
 
         // Memory
         if (!index & 0x1200) == 0x1200 && (index & 0x0080) != 0 {
-            return &self.memory[(index & 0x007F) as usize];
+            return self.memory[(index & 0x007F) as usize];
         }
 
         // TIA Read
@@ -70,9 +65,9 @@ impl Index<u16> for MemoryMap {
         // return the default state until we implement input
         if (!index & 0x1080) == 0x1080 {
             if (index & 0x000F) == 0xC {
-                return &0b1000_0000;
+                return 0b1000_0000;
             }
-            return &0;
+            return 0;
         }
 
         // RIOT Read
@@ -95,21 +90,21 @@ mod tests {
     fn program_read() {
         // TODO: lower 4k
         let program = [1u8; PROGRAM_SIZE];
-        let mmap = MemoryMap::new(program);
-        assert_eq!(mmap[0xF000], 1);
-        assert_eq!(mmap[0xFFFF], 1);
+        let mut mmap = MemoryMap::new(program);
+        assert_eq!(mmap.get(0xF000), 1);
+        assert_eq!(mmap.get(0xFFFF), 1);
 
-        assert_eq!(mmap[0xD000], 1);
-        assert_eq!(mmap[0xDFFF], 1);
+        assert_eq!(mmap.get(0xD000), 1);
+        assert_eq!(mmap.get(0xDFFF), 1);
 
-        assert_eq!(mmap[0x9000], 1);
-        assert_eq!(mmap[0x9FFF], 1);
+        assert_eq!(mmap.get(0x9000), 1);
+        assert_eq!(mmap.get(0x9FFF), 1);
 
-        assert_eq!(mmap[0x5000], 1);
-        assert_eq!(mmap[0x5FFF], 1);
+        assert_eq!(mmap.get(0x5000), 1);
+        assert_eq!(mmap.get(0x5FFF), 1);
 
-        assert_eq!(mmap[0x1000], 1);
-        assert_eq!(mmap[0x1FFF], 1);
+        assert_eq!(mmap.get(0x1000), 1);
+        assert_eq!(mmap.get(0x1FFF), 1);
     }
 
     #[test]
@@ -126,35 +121,35 @@ mod tests {
         let mut mmap = MemoryMap::new(program);
         // Addresses for ram must be 0bxxx0 xx0x 1??? ????
         mmap.set(0x0080, 1);
-        assert_eq!(mmap[0x0080], 1);
+        assert_eq!(mmap.get(0x0080), 1);
 
         mmap.set(0x00FF, 2);
-        assert_eq!(mmap[0x00FF], 2);
+        assert_eq!(mmap.get(0x00FF), 2);
 
         mmap.set(0x0180, 3);
-        assert_eq!(mmap[0x0180], 3);
+        assert_eq!(mmap.get(0x0180), 3);
         mmap.set(0x01FF, 4);
-        assert_eq!(mmap[0x01FF], 4);
+        assert_eq!(mmap.get(0x01FF), 4);
 
         mmap.set(0x0480, 5);
-        assert_eq!(mmap[0x0480], 5);
+        assert_eq!(mmap.get(0x0480), 5);
         mmap.set(0x04FF, 6);
-        assert_eq!(mmap[0x04FF], 6);
+        assert_eq!(mmap.get(0x04FF), 6);
 
         mmap.set(0x0580, 0xF1);
-        assert_eq!(mmap[0x0580], 0xF1);
+        assert_eq!(mmap.get(0x0580), 0xF1);
         mmap.set(0x05FF, 0xE1);
-        assert_eq!(mmap[0x05FF], 0xE1);
+        assert_eq!(mmap.get(0x05FF), 0xE1);
 
         mmap.set(0x0880, 255);
-        assert_eq!(mmap[0x0880], 255);
+        assert_eq!(mmap.get(0x0880), 255);
         mmap.set(0x09FF, 0);
-        assert_eq!(mmap[0x09FF], 0);
+        assert_eq!(mmap.get(0x09FF), 0);
 
         mmap.set(0x0C80, 127);
-        assert_eq!(mmap[0x0C80], 127);
+        assert_eq!(mmap.get(0x0C80), 127);
         mmap.set(0x0DFF, 90);
-        assert_eq!(mmap[0x0DFF], 90);
+        assert_eq!(mmap.get(0x0DFF), 90);
     }
 
     // TODO: tia reads (state of the tia)

@@ -59,7 +59,7 @@ fn clear_terminal() -> Result<()> {
     Ok(())
 }
 
-fn draw_terminal(chip: &Nmos6502) -> Result<()> {
+fn draw_terminal(chip: &mut Nmos6502) -> Result<()> {
     let mut stdout = stdout();
     queue!(
         stdout,
@@ -78,7 +78,7 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
         cursor::MoveToNextLine(1),
         Print(format!("Flags: Z({})", chip.z)),
         cursor::MoveToNextLine(2),
-        Print(format!("Next Instruction: {:02X}", chip.mmap[chip.pc])),
+        Print(format!("Next Instruction: {:02X}", chip.mmap.get(chip.pc))),
         cursor::MoveToNextLine(2),
         cursor::MoveRight(5),
         Print("TIA Write"),
@@ -190,7 +190,7 @@ fn main() {
         }
         if debug {
             std::thread::sleep(std::time::Duration::from_millis(10));
-            draw_terminal(&chip).expect("couldn't draw terminal");
+            draw_terminal(&mut chip).expect("couldn't draw terminal");
         }
     }
 }

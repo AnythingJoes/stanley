@@ -23,11 +23,10 @@ impl Riot {
 
     // TODO this only gets timer, there are other values here
     // timint is only reset if the timer is read
-    // TODO: refactor indexing because we need to do something on read here
-    pub fn get(&self, index: u16) -> &u8 {
+    pub fn get(&mut self, index: u16) -> u8 {
         if index & 0x0284 == 0x0284 {
-            // self.timint = false;
-            return &self.timer;
+            self.timint = false;
+            return self.timer;
         }
         todo!("RIOT read not implemented for {:X}", index);
     }
@@ -63,16 +62,16 @@ mod tests {
     fn test_1_clock_timer() {
         let mut riot = Riot::default();
         riot.set(0x14, 100);
-        assert_eq!(*riot.get(0x0284), 100);
+        assert_eq!(riot.get(0x0284), 100);
 
         riot.tick(1);
-        assert_eq!(*riot.get(0x0284), 99);
+        assert_eq!(riot.get(0x0284), 99);
 
         riot.tick(3);
-        assert_eq!(*riot.get(0x0284), 96);
+        assert_eq!(riot.get(0x0284), 96);
 
         riot.tick(1024);
-        assert_eq!(*riot.get(0x0284), 96);
+        assert_eq!(riot.get(0x0284), 96);
     }
 
     #[test]
@@ -83,26 +82,26 @@ mod tests {
         };
         riot.set(0x15, 3);
         assert!(!riot.timint);
-        assert_eq!(*riot.get(0x0284), 3);
+        assert_eq!(riot.get(0x0284), 3);
 
         riot.tick(8);
-        assert_eq!(*riot.get(0x0284), 2);
+        assert_eq!(riot.get(0x0284), 2);
 
         riot.tick(16);
-        assert_eq!(*riot.get(0x0284), 0);
+        assert_eq!(riot.get(0x0284), 0);
 
         riot.tick(7);
-        assert_eq!(*riot.get(0x0284), 0);
+        assert_eq!(riot.get(0x0284), 0);
 
         riot.tick(1);
-        assert_eq!(*riot.get(0x0284), 0xFF);
+        assert_eq!(riot.get(0x0284), 0xFF);
 
         riot.set(0x15, 5);
         assert!(!riot.timint);
         riot.tick(49);
 
         assert!(riot.timint);
-        assert_eq!(*riot.get(0x0284), 0xFE);
+        assert_eq!(riot.get(0x0284), 0xFE);
         // assert_eq!(riot.timint, false)
     }
 
@@ -110,31 +109,31 @@ mod tests {
     fn test_64_clock_timer() {
         let mut riot = Riot::default();
         riot.set(0x16, 100);
-        assert_eq!(*riot.get(0x0284), 100);
+        assert_eq!(riot.get(0x0284), 100);
 
         riot.tick(63);
-        assert_eq!(*riot.get(0x0284), 100);
+        assert_eq!(riot.get(0x0284), 100);
 
         riot.tick(1);
-        assert_eq!(*riot.get(0x0284), 99);
+        assert_eq!(riot.get(0x0284), 99);
 
         riot.tick(66);
-        assert_eq!(*riot.get(0x0284), 98);
+        assert_eq!(riot.get(0x0284), 98);
 
         riot.tick(128);
-        assert_eq!(*riot.get(0x0284), 96);
+        assert_eq!(riot.get(0x0284), 96);
     }
 
     #[test]
     fn test_1024_timer() {
         let mut riot = Riot::default();
         riot.set(0x17, 100);
-        assert_eq!(*riot.get(0x0284), 100);
+        assert_eq!(riot.get(0x0284), 100);
 
         riot.tick(1023);
-        assert_eq!(*riot.get(0x0284), 100);
+        assert_eq!(riot.get(0x0284), 100);
 
         riot.tick(1);
-        assert_eq!(*riot.get(0x0284), 99);
+        assert_eq!(riot.get(0x0284), 99);
     }
 }
