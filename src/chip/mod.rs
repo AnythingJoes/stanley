@@ -2,11 +2,14 @@ pub mod instructions;
 mod memory_map;
 pub mod riot;
 
+use instructions::Instruction;
 use memory_map::MemoryMap;
 
 pub struct Nmos6502 {
     /// X indexing register
     pub x: u8,
+    /// Y indexing register
+    pub y: u8,
     /// A accumulator register
     pub a: u8,
     /// Program counter
@@ -28,6 +31,7 @@ impl Nmos6502 {
     pub fn new(program: [u8; 4096]) -> Self {
         Nmos6502 {
             x: 0,
+            y: 0,
             a: 0,
             n: false,
             z: false,

@@ -94,6 +94,29 @@ impl Instruction for LdaA {
     }
 }
 
+// LDA
+// FLAGS: N Z
+// Mode: Absolute,Y
+// Syntax: LDA $4400,Y
+// Hex: $B9
+// Width: 3
+// Timing: 4, +1 if page boundary crossed
+pub struct LdaAY;
+impl Instruction for LdaAY {
+    const CODE: u8 = 0xB9;
+    fn execute(&self, chip: &mut Nmos6502) -> usize {
+        let low = chip.next_byte() as u16;
+        let high = chip.next_byte() as u16;
+        let addr = (high << 8) + low;
+        let value = chip.mmap[addr + (chip.y as u16)];
+        chip.z = value == 0;
+        chip.n = (value as i8) < 0;
+
+        chip.a = value;
+        4
+    }
+}
+
 // STA
 // FLAGS: None
 // Mode: Zero Page
