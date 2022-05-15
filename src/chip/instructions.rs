@@ -99,7 +99,7 @@ impl Instruction for StaZ {
     const CODE: u8 = 0x85;
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte();
-        chip.mmap[arg as u16] = chip.a;
+        chip.mmap.set(arg as u16, chip.a);
         chip.cycles += 3;
     }
 }
@@ -117,7 +117,7 @@ impl Instruction for StaZX {
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte();
         let index = (arg + chip.x) as u16;
-        chip.mmap[index] = chip.a;
+        chip.mmap.set(index, chip.a);
         chip.cycles += 4;
     }
 }
@@ -136,7 +136,7 @@ impl Instruction for StxA {
         let low = chip.next_byte() as u16;
         let high = chip.next_byte() as u16;
         let addr = (high << 8) + low;
-        chip.mmap[addr] = chip.x;
+        chip.mmap.set(addr, chip.x);
         chip.cycles += 4;
     }
 }
@@ -242,9 +242,9 @@ impl Instruction for Jsr {
 
         let ret_low = chip.pc as u8;
         let ret_high = (chip.pc >> 8) as u8;
-        chip.mmap[chip.sp as u16] = ret_high;
+        chip.mmap.set(chip.sp as u16, ret_high);
         chip.sp -= 1;
-        chip.mmap[chip.sp as u16] = ret_low - 1;
+        chip.mmap.set(chip.sp as u16, ret_low - 1);
         chip.sp -= 1;
         chip.pc = jump_address;
         chip.cycles += 6;

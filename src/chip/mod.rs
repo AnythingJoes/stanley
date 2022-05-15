@@ -1,5 +1,6 @@
 pub mod instructions;
 mod memory_map;
+pub mod riot;
 
 use memory_map::MemoryMap;
 

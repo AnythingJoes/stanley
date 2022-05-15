@@ -30,9 +30,11 @@ impl Timer {
         self.instant.elapsed()
     }
 
-    pub fn pause_for(&mut self, durr: Duration) {
+    // TODO: Fix this thing I didn't expect to happen where instructions seem to take longer than
+    // they should
+    pub fn pause_for(&mut self, dur: Duration) {
         let elapsed = self.elapsed();
-        let actual = durr
+        let actual = dur
             .checked_sub(elapsed)
             .expect("Execution took way longer than it should have. Something is very wrong!");
         if self.runover < actual {
@@ -40,7 +42,6 @@ impl Timer {
             let now = Instant::now();
 
             sleep(should_sleep);
-
             self.runover = now.elapsed() - should_sleep;
         } else {
             self.runover -= actual;
@@ -64,7 +65,7 @@ mod tests {
     }
 
     #[test]
-    // NOTE: Fake clock does not support times less than 1 milisecond these times are unrealistic
+    // NOTE: Fake clock does not support times less than 1 millisecond these times are unrealistic
     // for our use case
     fn test_pause_for() {
         use fake_clock::FakeClock;

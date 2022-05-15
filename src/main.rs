@@ -150,14 +150,13 @@ fn main() {
     loop {
         if debug {
             clear_terminal().expect("couldn't clear terminal");
-        }
-        // TODO: clean this up and test
-        // TODO: Handle cases where the sleep took a lot longer than it should
-        let cycles_run = chip.cycles - previous_cycles;
-        if cycles_run > 10 {
-            let cycle_time = Duration::from_nanos(cycles_run * 837);
-            timer.pause_for(cycle_time);
-            previous_cycles = chip.cycles;
+        } else {
+            let cycles_run = chip.cycles - previous_cycles;
+            if cycles_run > 10 {
+                let cycle_time = Duration::from_nanos(cycles_run * 837);
+                timer.pause_for(cycle_time);
+                previous_cycles = chip.cycles;
+            }
         }
 
         let instruction = chip.next_byte();
