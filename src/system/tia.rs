@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::renderer::{InputType, WindowEvent};
+
 const COLOR_CLOCKS_PER_LINE: usize = 228;
 const COLOR_CLOCKS_PER_FRAME: usize = COLOR_CLOCKS_PER_LINE * SCAN_LINES;
 const SCAN_LINES: usize = 262;
@@ -13,6 +15,9 @@ const DRAWING_START_ROW: usize = 40;
 const DRAWING_START_COLUMN: usize = 68;
 const DRAWING_ROWS: usize = 192;
 const DRAWING_COLUMNS: usize = 160;
+
+// TIA Register Constants
+const INPT4: u16 = 0xC;
 
 pub struct WsyncClocks {
     pub value: usize,
@@ -45,6 +50,9 @@ pub struct Tia {
     // color clocks this frame
     color_clocks: usize,
 
+    // Input handling
+    joystick1_trigger_pressed: bool,
+
     pub buffer: Buffer,
 }
 
@@ -68,6 +76,10 @@ impl Default for Tia {
 
             // color clocks this frame
             color_clocks: 0,
+
+            // input handling
+            joystick1_trigger_pressed: false,
+
             buffer: Buffer([0xFF; BUFF_SIZE]),
         }
     }
@@ -103,8 +115,12 @@ impl Tia {
         // If it ends in 0xC, it's trying to read player 0 input in this case 0
         // is pressed and 1 in the sign bit is the default state. We want to
         // return the default state until we implement input
-        if (index & 0x000F) == 0xC {
-            return 0b1000_0000;
+        if (index & 0x000F) == INPT4 {
+            return if !self.joystick1_trigger_pressed {
+                0b1000_0000
+            } else {
+                0
+            };
         }
         unimplemented!("Tia get not implemented for {:04X} index", index);
     }
@@ -155,6 +171,19 @@ impl Tia {
             return clocks;
         }
         WsyncClocks { value: 0 }
+    }
+
+    /// Handles an input start or end event from the window, updating its internal state to match.
+    pub fn input_event(&mut self, event: WindowEvent) {
+        match event {
+            WindowEvent::InputStart(InputType::Joystick1Button) => {
+                self.joystick1_trigger_pressed = true
+            }
+            WindowEvent::InputEnd(InputType::Joystick1Button) => {
+                self.joystick1_trigger_pressed = false
+            }
+            _ => (),
+        }
     }
 
     fn get_playfield(&self) -> u64 {

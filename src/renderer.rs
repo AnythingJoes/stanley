@@ -7,6 +7,17 @@ use sdl2::{
     EventPump,
 };
 
+pub enum InputType {
+    Joystick1Button,
+}
+
+pub enum WindowEvent {
+    None,
+    Quit,
+    InputStart(InputType),
+    InputEnd(InputType),
+}
+
 pub struct Renderer<'a> {
     event_pump: EventPump,
     canvas: WindowCanvas,
@@ -45,20 +56,28 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    pub fn handle_events(&mut self) -> super::Result<()> {
-        let events = self.event_pump.poll_iter();
-        for event in events {
-            match event {
-                // Close events
+    pub fn handle_events(&mut self) -> WindowEvent {
+        let mut events = self.event_pump.poll_iter();
+        let event = events.next();
+        match event {
+            // Close events
+            Some(
                 Event::Quit { .. }
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
-                } => return Err("User exited".into()),
-                _ => (),
-            }
+                },
+            ) => WindowEvent::Quit,
+            Some(Event::KeyDown {
+                keycode: Some(Keycode::F),
+                ..
+            }) => WindowEvent::InputStart(InputType::Joystick1Button),
+            Some(Event::KeyUp {
+                keycode: Some(Keycode::F),
+                ..
+            }) => WindowEvent::InputEnd(InputType::Joystick1Button),
+            _ => WindowEvent::None,
         }
-        Ok(())
     }
 }
 

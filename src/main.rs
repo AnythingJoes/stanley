@@ -17,7 +17,7 @@ mod debugger;
 use debugger::{get_debugger, try_parse_breakpoint, BreakPointType};
 
 mod renderer;
-use renderer::Renderer;
+use renderer::{Renderer, WindowEvent};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -83,10 +83,12 @@ fn main() -> Result<()> {
             eprintln!("{}", e);
             break;
         }
-        if let Err(e) = renderer.handle_events() {
-            eprintln!("{}", e);
-            break;
-        }
+
+        match renderer.handle_events() {
+            WindowEvent::Quit => break,
+            WindowEvent::None => (),
+            event => system.tia.input_event(event),
+        };
 
         let instruction: InstructionValue = system.next_byte().try_into()?;
 
