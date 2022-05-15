@@ -209,6 +209,27 @@ fn main() {
                 // Timing: 2
                 chip.sp = chip.x;
             }
+            // Subroutine Instructions
+            //
+            // JSR
+            // FLAGS:
+            0x20 => {
+                // Syntax: JSR
+                // Hex: $20
+                // Width: 3
+                // Timing: 6
+                let low = chip.next_byte() as u16;
+                let high = chip.next_byte() as u16;
+                let jump_address = (high << 8) + low;
+
+                let ret_low = chip.pc as u8;
+                let ret_high = (chip.pc >> 8) as u8;
+                chip.mmap[chip.sp as u16] = ret_high;
+                chip.sp -= 1;
+                chip.mmap[chip.sp as u16] = ret_low;
+                chip.sp -= 1;
+                chip.pc = jump_address
+            }
             instruction => {
                 if debug {
                     std::thread::sleep(std::time::Duration::from_millis(5000));
