@@ -68,7 +68,8 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
             chip.x, 0, chip.a
         )),
         Print(format!("PC: {:02X}   |", chip.pc)),
-        Print(format!("SP: {:02X}", chip.sp)),
+        Print(format!("SP: {:02X}   |", chip.sp)),
+        Print(format!("CYCLES: {}", chip.cycles)),
         cursor::MoveToNextLine(1),
         cursor::MoveToNextLine(1),
         Print(format!("Flags: Z({})", chip.z)),

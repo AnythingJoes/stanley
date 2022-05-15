@@ -21,6 +21,7 @@ impl Instruction for LdxI {
         chip.n = (arg as i8) < 0;
 
         chip.x = arg;
+        chip.cycles += 2;
     }
 }
 
@@ -40,6 +41,7 @@ impl Instruction for LdaI {
         chip.n = (arg as i8) < 0;
 
         chip.a = arg;
+        chip.cycles += 2;
     }
 }
 
@@ -60,6 +62,7 @@ impl Instruction for LdaZ {
         chip.n = (value as i8) < 0;
 
         chip.a = value;
+        chip.cycles += 2;
     }
 }
 
@@ -81,6 +84,7 @@ impl Instruction for LdaA {
         chip.n = (value as i8) < 0;
 
         chip.a = value;
+        chip.cycles += 4;
     }
 }
 // STA
@@ -96,6 +100,7 @@ impl Instruction for StaZ {
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte();
         chip.mmap[arg as u16] = chip.a;
+        chip.cycles += 3;
     }
 }
 
@@ -113,6 +118,7 @@ impl Instruction for StaZX {
         let arg = chip.next_byte();
         let index = (arg + chip.x) as u16;
         chip.mmap[index] = chip.a;
+        chip.cycles += 4;
     }
 }
 
@@ -131,6 +137,7 @@ impl Instruction for StxA {
         let high = chip.next_byte() as u16;
         let addr = (high << 8) + low;
         chip.mmap[addr] = chip.x;
+        chip.cycles += 4;
     }
 }
 
@@ -148,6 +155,7 @@ impl Instruction for Inx {
 
         chip.z = chip.x == 0;
         chip.n = (chip.x as i8) < 0;
+        chip.cycles += 2;
     }
 }
 
@@ -157,15 +165,21 @@ impl Instruction for Inx {
 // FLAGS:
 // Syntax: BNE Label
 // Hex: $D0
-// Width: 1
+// Width: 2
 // Timing: 2, +1 if taken, +1 if across page boundary
 pub struct Bne;
 impl Instruction for Bne {
     const CODE: u8 = 0xD0;
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte() as i8;
+        chip.cycles += 2;
         if !chip.z {
-            chip.pc = chip.pc.wrapping_add(arg as u16);
+            chip.cycles += 1;
+            let addr = chip.pc.wrapping_add(arg as u16);
+            if (addr & 0xFF00) != (chip.pc & 0xFF00) {
+                chip.cycles += 1;
+            }
+            chip.pc = addr;
         }
     }
 }
@@ -174,15 +188,21 @@ impl Instruction for Bne {
 // FLAGS:
 // Syntax: BNE Label
 // Hex: $30
-// Width: 1
+// Width: 2
 // Timing: 2, +1 if taken, +1 if across page boundary
 pub struct Bmi;
 impl Instruction for Bmi {
     const CODE: u8 = 0x30;
     fn execute(chip: &mut Nmos6502) {
         let arg = chip.next_byte() as i8;
+        chip.cycles += 2;
         if chip.n {
-            chip.pc = chip.pc.wrapping_add(arg as u16);
+            chip.cycles += 1;
+            let addr = chip.pc.wrapping_add(arg as u16);
+            if (addr & 0xFF00) != (chip.pc & 0xFF00) {
+                chip.cycles += 1;
+            }
+            chip.pc = addr;
         }
     }
 }
@@ -200,6 +220,7 @@ impl Instruction for Txs {
     const CODE: u8 = 0x9A;
     fn execute(chip: &mut Nmos6502) {
         chip.sp = chip.x;
+        chip.cycles += 2;
     }
 }
 
@@ -226,6 +247,7 @@ impl Instruction for Jsr {
         chip.mmap[chip.sp as u16] = ret_low - 1;
         chip.sp -= 1;
         chip.pc = jump_address;
+        chip.cycles += 6;
     }
 }
 
@@ -244,6 +266,7 @@ impl Instruction for Rts {
         chip.sp += 1;
         let high = chip.mmap[chip.sp as u16] as u16;
         chip.pc = (high << 8) + low + 1;
+        chip.cycles += 6;
     }
 }
 
@@ -264,5 +287,6 @@ impl Instruction for Eor {
         chip.n = (arg as i8) < 0;
         chip.z = arg == 0;
         chip.a ^= arg;
+        chip.cycles += 2;
     }
 }

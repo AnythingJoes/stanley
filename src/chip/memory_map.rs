@@ -57,9 +57,9 @@ impl Index<u16> for MemoryMap {
         // to reach zero. This will drive out the implementation of clock cycles
         if (!index & 0x1000) == 0x1000 && (index & 0x0480) != 0 {
             // INTIM timer check
-            if index & 0x0284 == 0x0284 {
-                return &1; // anything but zero
-            }
+            // if index & 0x0284 == 0x0284 {
+            //     return &1; // anything but zero
+            // }
             return &0;
         }
 
