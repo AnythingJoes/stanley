@@ -7,20 +7,35 @@ struct Nmos6502 {
     // A accumulator register
     a: u8,
     memory: [u8; 8192],
+    pc: u16,
+    // Address range 0x1000 to 0x2000
+    program: [u8; 4096],
+}
+
+impl Nmos6502 {
+    fn next_byte(&mut self) -> u8 {
+        let byte = self.program[(self.pc - 0x1000) as usize];
+        self.pc += 1;
+        byte
+    }
 }
 
 fn main() {
-    let mut byte_vec = fs::read("./tictactoe.bin").unwrap();
-    let mut bytes = byte_vec.iter_mut();
+    let byte_vec = fs::read("./tictactoe.bin").unwrap();
     let mut chip = Nmos6502 {
         x: 0,
         a: 0,
         memory: [0; 8192],
+        pc: 0x1000,
+        program: byte_vec
+            .try_into()
+            .expect("Program expected to be 4096 bytes was not"),
     };
 
     loop {
-        let byte = bytes.next().expect("End of program");
-        match byte {
+        let instruction = chip.next_byte();
+
+        match instruction {
             // LDX
             // FLAGS: N Z
             0xA2 => {
@@ -29,8 +44,8 @@ fn main() {
                 // Hex: $A2
                 // Width: 2
                 // Timing: 2
-                let arg = bytes.next().expect("Expected arg for 0xA2 got end of file");
-                chip.x = *arg;
+                let arg = chip.next_byte();
+                chip.x = arg;
             }
             // LDA
             // FLAGS: N Z
@@ -40,8 +55,8 @@ fn main() {
                 // Hex: $A9
                 // Width: 2
                 // Timing: 2
-                let arg = bytes.next().expect("Expected arg for 0xA9 got end of file");
-                chip.a = *arg;
+                let arg = chip.next_byte();
+                chip.a = arg;
             }
             // STA
             // FLAGS: None
@@ -51,8 +66,8 @@ fn main() {
                 // Hex: $95
                 // Width: 2
                 // Timing: 4
-                let arg = bytes.next().expect("Expected arg for 0x95 got end of file");
-                let index = (*arg + chip.x) as usize;
+                let arg = chip.next_byte();
+                let index = (arg + chip.x) as usize;
                 chip.memory[index] = chip.a;
             }
             // INX
