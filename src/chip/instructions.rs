@@ -412,3 +412,22 @@ impl Instruction for Eor {
         2
     }
 }
+
+// LSR
+// FLAGS: N Z C
+// Syntax: LSR (A)
+// Mode: Accumulator
+// Hex: $4A
+// Width: 1
+// Timing: 2
+pub struct Lsr;
+impl Instruction for Lsr {
+    const CODE: u8 = 0x4A;
+    fn execute(&self, chip: &mut Nmos6502) -> usize {
+        let arg = chip.next_byte();
+        chip.c = chip.a & 0x01 == 0;
+        chip.a >>= 1;
+        chip.a ^= arg;
+        2
+    }
+}
