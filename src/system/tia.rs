@@ -122,6 +122,10 @@ impl Tia {
                 0
             };
         }
+        // This is not a valid address, but is used to waste time in some programs.
+        if (index & 0x000F) == 0x00E {
+            return 0;
+        }
         unimplemented!("Tia get not implemented for {:04X} index", index);
     }
 
@@ -192,8 +196,7 @@ impl Tia {
             + (self.pf2.reverse_bits() as u64);
         (playfield << 20)
             + if self.pf_reflected {
-                // TODO: This is wrong it 64 bits long, needs to be shifted
-                playfield.reverse_bits()
+                playfield.reverse_bits() >> (64 - 20)
             } else {
                 playfield
             }

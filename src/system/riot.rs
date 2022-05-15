@@ -26,12 +26,14 @@ impl Riot {
         self.clocks = self.clocks_per_interval - 1;
     }
 
-    // TODO this only gets timer, there are other values here
-    // timint is only reset if the timer is read
     pub fn get(&mut self, index: u16) -> u8 {
         if index & 0x0284 == 0x0284 {
             self.timint = false;
             return self.timer;
+        }
+
+        if index & 0x280 == 0x280 {
+            return 0xFF;
         }
         todo!("RIOT read not implemented for {:X}", index);
     }
