@@ -310,6 +310,25 @@ impl Instruction for Txs {
     }
 }
 
+// Register Instructions
+//
+// TXA
+// FLAGS: N Z
+// Syntax: TXA
+// Hex: $8A
+// Width: 1
+// Timing: 2
+pub struct Txa;
+impl Instruction for Txa {
+    const CODE: u8 = 0x8A;
+    fn execute(&self, chip: &mut Nmos6502) -> usize {
+        chip.a = chip.x;
+        chip.z = chip.a == 0;
+        chip.n = (chip.a as i8) < 0;
+        2
+    }
+}
+
 // Subroutine Instructions
 //
 // JSR
