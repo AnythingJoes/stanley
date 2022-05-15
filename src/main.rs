@@ -26,20 +26,31 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 struct Args {
     #[clap(short, long)]
     debug: bool,
+    #[clap(long)]
+    disassemble: bool,
 }
 
 fn main() -> Result<()> {
-    let Args { debug } = Args::parse();
+    let Args { debug, disassemble } = Args::parse();
 
     let byte_vec = fs::read("./tictactoe.bin").unwrap();
     let program = byte_vec
         .try_into()
         .expect("Program expected to be 4096 bytes was not");
-    let mut system = System::new(program);
-    let total_time = Instant::now();
     let mut debugger = get_debugger(debug);
+
+    if disassemble {
+        if debug {
+            debugger.dump_disassembly(program);
+            return Ok(());
+        } else {
+            return Err("Must be in debug mode to print disassembly".into());
+        }
+    }
     debugger.setup(program)?;
 
+    let mut system = System::new(program);
+    let total_time = Instant::now();
     let mut renderer = Renderer::setup()?;
 
     // Timing stuff

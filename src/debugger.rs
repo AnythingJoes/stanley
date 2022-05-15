@@ -28,6 +28,8 @@ pub trait Debugger {
     fn teardown(&self) -> super::Result<()> {
         Ok(())
     }
+
+    fn dump_disassembly(&mut self, _program: [u8; 4096]) {}
 }
 
 pub fn get_debugger(is_debug: bool) -> Box<dyn Debugger> {
@@ -57,7 +59,8 @@ impl ActiveDebugger {
             let key = inst.0 + 0x1000;
             let inst_value: std::result::Result<InstructionValue, _> = (*inst.1).try_into();
             if in_data {
-                disassembly.insert(key as u16, inst.1.to_string());
+                let value = format!("{key:04X}: {}", inst.1);
+                disassembly.insert(key as u16, value);
                 continue;
             }
 
@@ -70,7 +73,8 @@ impl ActiveDebugger {
                 disassembly.insert(key as u16, value);
             } else {
                 in_data = true;
-                disassembly.insert(key as u16, inst.1.to_string());
+                let value = format!("{key:04X}: {}", inst.1);
+                disassembly.insert(key as u16, value);
             }
         }
         self.disassembly.replace(disassembly);
@@ -165,5 +169,12 @@ impl Debugger for ActiveDebugger {
             terminal::LeaveAlternateScreen
         )?;
         Ok(())
+    }
+
+    fn dump_disassembly(&mut self, program: [u8; 4096]) {
+        self.disassemble(program);
+        for line in self.disassembly.as_ref().unwrap().values() {
+            println!("{line}")
+        }
     }
 }
