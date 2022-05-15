@@ -14,6 +14,10 @@ const DRAWING_START_COLUMN: usize = 68;
 const DRAWING_ROWS: usize = 192;
 const DRAWING_COLUMNS: usize = 160;
 
+pub struct WsyncClocks {
+    pub value: usize,
+}
+
 pub struct Buffer(pub [u8; BUFF_SIZE]);
 impl fmt::Debug for Buffer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -128,13 +132,29 @@ impl Tia {
             (self.color_clocks + clocks * COLOR_CLOCKS_PER_SYSTEM_CLOCK) % COLOR_CLOCKS_PER_FRAME;
     }
 
-    pub fn wsync_ticks(&self) -> usize {
+    fn wsync_ticks(&self) -> usize {
         (COLOR_CLOCKS_PER_LINE - self.color_clocks % COLOR_CLOCKS_PER_LINE)
             / COLOR_CLOCKS_PER_SYSTEM_CLOCK
     }
 
     pub fn is_drawing(&self) -> bool {
         Tia::row(self.color_clocks) < DRAWING_ROWS
+    }
+
+    /// Sync syncs the tia, and returns a number of ticks to advance the clock. Used for the wsync
+    /// signal
+    pub fn sync(&mut self) -> WsyncClocks {
+        if self.wsync {
+            let clocks = WsyncClocks {
+                value: self.wsync_ticks(),
+            };
+            if self.vsync {
+                self.color_clocks = 228 * 3;
+            }
+            self.wsync = false;
+            return clocks;
+        }
+        WsyncClocks { value: 0 }
     }
 
     fn get_playfield(&self) -> u64 {
@@ -150,8 +170,16 @@ impl Tia {
     fn column(color_clocks: usize) -> usize {
         (color_clocks % COLOR_CLOCKS_PER_LINE).wrapping_sub(DRAWING_START_COLUMN)
     }
+
     fn row(color_clocks: usize) -> usize {
         (color_clocks / COLOR_CLOCKS_PER_LINE).wrapping_sub(DRAWING_START_ROW)
+    }
+
+    fn scan_line(&self) -> usize {
+        self.color_clocks / COLOR_CLOCKS_PER_LINE
+    }
+    fn beam_position(&self) -> usize {
+        self.color_clocks % COLOR_CLOCKS_PER_LINE
     }
 }
 
@@ -161,13 +189,17 @@ impl fmt::Display for Tia {
             f,
             "
 TIA\r\n
-Colors: COLUBK: {:02X} | COLUPF: {:02X} | Color Clocks: {}\r\n
+Colors: COLUBK: {:02X} | COLUPF: {:02X} | Current Line: {} | Beam Position: {}\r\n
+VSYNC: {} | VBLANK: {}\r\n
 Playfields: PF0({:08b}) PF1({:08b}) PF2({:08b})\r\n
 Combined Playfield: PF({:040b})\r\n
             ",
             self.colubk,
             self.colupf,
-            self.color_clocks,
+            self.scan_line(),
+            self.beam_position(),
+            self.vsync,
+            self.vblank,
             self.pf0,
             self.pf1,
             self.pf2,

@@ -96,10 +96,9 @@ impl System {
         let ticks = inst.execute(self)?;
         self.tick(ticks);
         self.riot.timer_reset = false;
-        if self.tia.wsync {
-            self.tick(self.tia.wsync_ticks());
-            self.tia.wsync = false;
-        }
+
+        let wsync_clocks = self.tia.sync().value;
+        self.tick(wsync_clocks);
         Ok(())
     }
 }
