@@ -10,6 +10,9 @@ struct Nmos6502 {
     pc: u16,
     // Address range 0x1000 to 0x2000
     program: [u8; 4096],
+    // FLAGS
+    // zero
+    z: bool,
 }
 
 impl Nmos6502 {
@@ -25,6 +28,7 @@ fn main() {
     let mut chip = Nmos6502 {
         x: 0,
         a: 0,
+        z: false,
         memory: [0; 8192],
         pc: 0x1000,
         program: byte_vec
@@ -45,6 +49,7 @@ fn main() {
                 // Width: 2
                 // Timing: 2
                 let arg = chip.next_byte();
+                chip.z = arg == 0;
                 chip.x = arg;
             }
             // LDA
@@ -56,6 +61,7 @@ fn main() {
                 // Width: 2
                 // Timing: 2
                 let arg = chip.next_byte();
+                chip.z = arg == 0;
                 chip.a = arg;
             }
             // STA
@@ -78,6 +84,19 @@ fn main() {
                 // Width: 1
                 // Timing: 2
                 chip.x += 1;
+                chip.z = chip.x == 0;
+            }
+            // BNE
+            // FLAGS:
+            0xD0 => {
+                // Syntax: BNE Label
+                // Hex: $D0
+                // Width: 1
+                // Timing: 2, +1 if taken, +1 if across page boundry
+                let arg = chip.next_byte() as i8;
+                if chip.z {
+                    chip.pc = chip.pc.wrapping_add(arg as u16);
+                }
             }
             instruction => {
                 panic!("Unkown instruction: {:X}", instruction);
