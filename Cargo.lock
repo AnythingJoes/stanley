@@ -87,6 +87,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fake_clock"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f041771230848b76a9c778bfd204e7204ca2c1f6043e49813bd10c45e9b06f93"
+
+[[package]]
 name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -331,6 +337,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "crossterm",
+ "fake_clock",
  "spin_sleep",
 ]
 

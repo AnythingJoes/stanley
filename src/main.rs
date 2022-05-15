@@ -12,11 +12,13 @@ use crossterm::{
     style::{self, Print},
     terminal::{self, ClearType},
 };
-use spin_sleep::sleep;
 
 mod chip;
 use chip::instructions::*;
 use chip::Nmos6502;
+
+mod timer;
+use timer::Timer;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -142,9 +144,8 @@ fn main() {
     let total_time = Instant::now();
 
     // Timing stuff
-    let mut runover = Duration::from_nanos(0);
-    let mut now = Instant::now();
     let mut previous_cycles = 0;
+    let mut timer = Timer::start();
 
     loop {
         if debug {
@@ -153,16 +154,9 @@ fn main() {
         // TODO: clean this up and test
         // TODO: Handle cases where the sleep took a lot longer than it should
         let cycles_run = chip.cycles - previous_cycles;
-        if cycles_run > 40 {
+        if cycles_run > 10 {
             let cycle_time = Duration::from_nanos(cycles_run * 837);
-            let elapsed = now.elapsed();
-            let should_sleep = cycle_time - elapsed - runover;
-
-            now = Instant::now();
-
-            sleep(should_sleep);
-            runover = now.elapsed() - should_sleep;
-            now = Instant::now();
+            timer.pause_for(cycle_time);
             previous_cycles = chip.cycles;
         }
 
@@ -199,18 +193,3 @@ fn main() {
         }
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn test_timing() {
-//         // calculate runover
-//         // start
-//         // run some stuff
-//         // elapsed
-//         // sleep for should have taken - elapsed - runover
-
-//     }
-// }
