@@ -3,6 +3,7 @@ use std::fs;
 #[derive(Debug, Default)]
 struct Nmos6502 {
     x: u8,
+    a: u8,
 }
 
 fn main() {
@@ -22,9 +23,19 @@ fn main() {
                 let arg = bytes.next().expect("Expected arg for 0xA2 got end of file");
                 chip.x = *arg;
             }
+            0xA9 => {
+                // Mode: Immediate
+                // Syntax: LDX #$44
+                // Hex: $A9
+                // Width: 2
+                // Timing: 2
+                let arg = bytes.next().expect("Expected arg for 0xA9 got end of file");
+                chip.a = *arg;
+            }
             instruction => {
                 panic!("Unkown instruction: {:X}", instruction);
             }
         }
+        println!("{:?}", chip)
     }
 }
