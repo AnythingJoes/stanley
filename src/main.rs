@@ -72,33 +72,32 @@ fn draw_terminal(chip: &Nmos6502) -> Result<()> {
         cursor::MoveToNextLine(1),
         Print(format!("Flags: Z({})", chip.z)),
         cursor::MoveToNextLine(2),
-        Print(format!(
-            "Next Instruction: {:02X}",
-            chip.mmap.program[(chip.pc - 0x1000) as usize]
-        )),
+        Print(format!("Next Instruction: {:02X}", chip.mmap[chip.pc])),
         cursor::MoveToNextLine(2),
         cursor::MoveRight(5),
-        Print("MMappd Hardware"),
+        Print("TIA Write"),
+        cursor::MoveToNextLine(1),
+    )?;
+    for i in 0..4 {
+        for j in 0..16 {
+            let tia = chip.mmap.tia[i * 8 + j];
+            queue!(stdout, Print(format!("{:02X} ", tia)))?
+        }
+
+        queue!(stdout, cursor::MoveToNextLine(1))?
+    }
+
+    queue!(
+        stdout,
+        cursor::MoveToNextLine(2),
+        cursor::MoveRight(5),
+        Print("RAM"),
         cursor::MoveToNextLine(1),
     )?;
 
     for i in 0..8 {
         for j in 0..16 {
             let memory = chip.mmap.memory[i * 16 + j];
-            queue!(stdout, Print(format!("{:02X} ", memory)))?
-        }
-
-        queue!(stdout, cursor::MoveToNextLine(1))?
-    }
-    queue!(
-        stdout,
-        cursor::MoveToNextLine(2),
-        Print("RAM"),
-        cursor::MoveToNextLine(1),
-    )?;
-    for i in 0..8 {
-        for j in 0..16 {
-            let memory = chip.mmap.memory[128 + i * 16 + j];
             queue!(stdout, Print(format!("{:02X} ", memory)))?
         }
 
@@ -161,7 +160,7 @@ fn main() {
                 // Width: 2
                 // Timing: 3
                 let arg = chip.next_byte();
-                chip.mmap.memory[arg as usize] = chip.a;
+                chip.mmap[arg as u16] = chip.a;
             }
             // STA
             // FLAGS: None
@@ -172,8 +171,8 @@ fn main() {
                 // Width: 2
                 // Timing: 4
                 let arg = chip.next_byte();
-                let index = (arg + chip.x) as usize;
-                chip.mmap.memory[index] = chip.a;
+                let index = (arg + chip.x) as u16;
+                chip.mmap[index] = chip.a;
             }
             // INX
             // FLAGS: N z
