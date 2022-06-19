@@ -4,6 +4,7 @@ pub mod instructions;
 mod riot;
 pub mod tia;
 
+use crate::renderer::WindowEvent;
 use instructions::Instruction;
 use riot::Riot;
 use tia::Tia;
@@ -25,7 +26,7 @@ impl System {
     pub fn new(program: [u8; 4096]) -> Self {
         Self {
             chip: Nmos6507::new(),
-            riot: Riot::default(),
+            riot: Riot::new(),
             tia: Tia::default(),
             clocks: 0,
             memory: [0; MEMORY_SIZE],
@@ -121,6 +122,11 @@ impl System {
         self.chip.b = register & 16 != 0;
         self.chip.v = register & 64 != 0;
         self.chip.n = register & 128 != 0;
+    }
+
+    pub fn input_event(&mut self, event: &WindowEvent) {
+        self.riot.input_event(event);
+        self.tia.input_event(event);
     }
 }
 

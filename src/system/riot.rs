@@ -1,3 +1,4 @@
+use crate::renderer::{InputType, WindowEvent};
 use std::fmt;
 
 #[derive(Default, Debug)]
@@ -6,10 +7,18 @@ pub struct Riot {
     clocks: usize,
     clocks_per_interval: usize,
     timint: bool,
+    swcha: u8,
     pub timer_reset: bool,
 }
 
 impl Riot {
+    pub fn new() -> Self {
+        Self {
+            swcha: 0xFF,
+            ..Default::default()
+        }
+    }
+
     // TODO: There are other things to set other than the timer. This will fail eventually
     pub fn set(&mut self, index: u16, value: u8) {
         self.timint = false;
@@ -33,7 +42,7 @@ impl Riot {
         }
 
         if index & 0x280 == 0x280 {
-            return 0xFF;
+            return self.swcha;
         }
         todo!("RIOT read not implemented for {:X}", index);
     }
@@ -59,6 +68,20 @@ impl Riot {
             self.clocks = total_clocks % self.clocks_per_interval;
         }
     }
+
+    pub fn input_event(&mut self, event: &WindowEvent) {
+        match event {
+            WindowEvent::InputStart(InputType::Joystick1Up) => self.swcha &= 0b1110_1111,
+            WindowEvent::InputEnd(InputType::Joystick1Up) => self.swcha |= 0b0001_0000,
+            WindowEvent::InputStart(InputType::Joystick1Down) => self.swcha &= 0b1101_1111,
+            WindowEvent::InputEnd(InputType::Joystick1Down) => self.swcha |= 0b0010_0000,
+            WindowEvent::InputStart(InputType::Joystick1Left) => self.swcha &= 0b1011_1111,
+            WindowEvent::InputEnd(InputType::Joystick1Left) => self.swcha |= 0b0100_0000,
+            WindowEvent::InputStart(InputType::Joystick1Right) => self.swcha &= 0b0111_1111,
+            WindowEvent::InputEnd(InputType::Joystick1Right) => self.swcha |= 0b1000_0000,
+            _ => (),
+        }
+    }
 }
 
 impl fmt::Display for Riot {
@@ -67,9 +90,9 @@ impl fmt::Display for Riot {
             f,
             "
 RIOT\r\n
-Timer: {:03}  | Timer Width  {:04} | TIMINT: {}\r\n\r\n
+Timer: {:03}  | Timer Width  {:04} | TIMINT: {} | SWCHA {:08b}\r\n\r\n
             ",
-            self.timer, self.clocks_per_interval, self.timint
+            self.timer, self.clocks_per_interval, self.timint, self.swcha
         )
     }
 }
@@ -80,7 +103,7 @@ mod tests {
 
     #[test]
     fn test_1_clock_timer() {
-        let mut riot = Riot::default();
+        let mut riot = Riot::new();
         riot.set(0x14, 100);
         riot.timer_reset = false;
         assert_eq!(riot.get(0x0284), 100);
@@ -129,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_64_clock_timer() {
-        let mut riot = Riot::default();
+        let mut riot = Riot::new();
         riot.set(0x16, 100);
         riot.timer_reset = false;
         assert_eq!(riot.get(0x0284), 100);
@@ -149,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_1024_timer() {
-        let mut riot = Riot::default();
+        let mut riot = Riot::new();
         riot.set(0x17, 100);
         riot.timer_reset = false;
         assert_eq!(riot.get(0x0284), 100);

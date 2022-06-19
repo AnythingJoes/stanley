@@ -87,7 +87,7 @@ fn main() -> Result<()> {
         match renderer.handle_events() {
             WindowEvent::Quit => break,
             WindowEvent::None => (),
-            event => system.tia.input_event(event),
+            event => system.input_event(&event),
         };
 
         let instruction: Instruction = system.next_byte().try_into()?;

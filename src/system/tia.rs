@@ -227,7 +227,7 @@ impl Tia {
     }
 
     /// Handles an input start or end event from the window, updating its internal state to match.
-    pub fn input_event(&mut self, event: WindowEvent) {
+    pub fn input_event(&mut self, event: &WindowEvent) {
         match event {
             WindowEvent::InputStart(InputType::Joystick1Button) => {
                 self.joystick1_trigger_pressed = true

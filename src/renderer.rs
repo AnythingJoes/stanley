@@ -9,6 +9,10 @@ use sdl2::{
 
 pub enum InputType {
     Joystick1Button,
+    Joystick1Up,
+    Joystick1Down,
+    Joystick1Left,
+    Joystick1Right,
 }
 
 pub enum WindowEvent {
@@ -76,6 +80,42 @@ impl<'a> Renderer<'a> {
                 keycode: Some(Keycode::F),
                 ..
             }) => WindowEvent::InputEnd(InputType::Joystick1Button),
+            // Up
+            Some(Event::KeyDown {
+                keycode: Some(Keycode::W),
+                ..
+            }) => WindowEvent::InputStart(InputType::Joystick1Up),
+            Some(Event::KeyUp {
+                keycode: Some(Keycode::W),
+                ..
+            }) => WindowEvent::InputEnd(InputType::Joystick1Up),
+            // Down
+            Some(Event::KeyDown {
+                keycode: Some(Keycode::S),
+                ..
+            }) => WindowEvent::InputStart(InputType::Joystick1Down),
+            Some(Event::KeyUp {
+                keycode: Some(Keycode::S),
+                ..
+            }) => WindowEvent::InputEnd(InputType::Joystick1Down),
+            // Left
+            Some(Event::KeyDown {
+                keycode: Some(Keycode::A),
+                ..
+            }) => WindowEvent::InputStart(InputType::Joystick1Left),
+            Some(Event::KeyUp {
+                keycode: Some(Keycode::A),
+                ..
+            }) => WindowEvent::InputEnd(InputType::Joystick1Left),
+            // Right
+            Some(Event::KeyDown {
+                keycode: Some(Keycode::D),
+                ..
+            }) => WindowEvent::InputStart(InputType::Joystick1Right),
+            Some(Event::KeyUp {
+                keycode: Some(Keycode::D),
+                ..
+            }) => WindowEvent::InputEnd(InputType::Joystick1Right),
             _ => WindowEvent::None,
         }
     }
