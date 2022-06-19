@@ -1,5 +1,6 @@
 use std::fmt;
 
+pub mod colors;
 pub mod instructions;
 mod riot;
 pub mod tia;

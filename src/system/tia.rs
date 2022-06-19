@@ -1,5 +1,6 @@
 use std::fmt;
 
+use super::colors::COLOR_MAP;
 use crate::renderer::{InputType, WindowEvent};
 
 const COLOR_CLOCKS_PER_LINE: usize = 228;
@@ -47,6 +48,8 @@ pub struct Tia {
     // colors
     colupf: u8,
     colubk: u8,
+    colup0: u8,
+    colup1: u8,
 
     //ctrlpf
     pf_reflected: bool,
@@ -83,6 +86,8 @@ impl Default for Tia {
             // colors
             colupf: 0,
             colubk: 0,
+            colup0: 0,
+            colup1: 0,
 
             //ctrlpf
             pf_reflected: false,
@@ -119,7 +124,9 @@ impl Tia {
             // handled correctly
             0x03 => (),
             0x04 => self.set_player1_nusize(value),
-            0x05..=0x07 => (), // Ignored for now
+            0x05 => (), // Ignored for now
+            0x06 => self.colup0 = value,
+            0x07 => self.colup1 = value,
             0x08 => self.colupf = value,
             0x09 => self.colubk = value,
             // TODO: other parts of ctrlpf
@@ -170,9 +177,9 @@ impl Tia {
                 let pixel_start = pixel * STRIDE;
                 let pf_index = 40 - column / STRIDE;
                 let color = if pf & (1 << (pf_index - 1)) != 0 {
-                    [0xFF, 0xFF, 0xFF, 0xFF]
+                    COLOR_MAP[self.colupf as usize].as_slice()
                 } else {
-                    [0x00, 0x00, 0x00, 0xFF]
+                    COLOR_MAP[self.colubk as usize].as_slice()
                 };
                 self.buffer.0[pixel_start..=pixel_start + 3].copy_from_slice(&color);
 
@@ -184,7 +191,7 @@ impl Tia {
                         let offset = column - sprite_start;
                         if self.grp0 & 1 << (7 - (offset / 4)) != 0 {
                             self.buffer.0[pixel_start..=pixel_start + 3]
-                                .copy_from_slice(&[0x00, 0x00, 0xFF, 0xFF]);
+                                .copy_from_slice(&COLOR_MAP[self.colup0 as usize].as_slice());
                         }
                     }
                 }
