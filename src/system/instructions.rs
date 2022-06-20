@@ -120,7 +120,7 @@ impl Instruction {
                 let v = value;
                 let c = system.chip.c as u8;
                 let result = a.wrapping_add(!v).wrapping_add(c);
-                system.chip.c = result & 0x80 != 0;
+                system.chip.c = result & 0x80 == 0;
                 system.chip.v = (a ^ result) & ((!v) ^ result) & 0x80 != 0;
                 system.chip.n = result & 0x80 != 0;
 
@@ -1617,12 +1617,12 @@ mod test {
         assert_eq!(system.chip.a, 0xFF);
         assert_eq!(clocks, 2);
 
-        assert!(system.chip.c);
+        assert!(!system.chip.c);
         assert!(!system.chip.v);
         assert!(system.chip.n);
         assert!(!system.chip.z);
 
-        // Adds with carry
+        // Subtracts with carry
         system.chip.a = 0;
         system.chip.c = false;
         system.chip.pc = 0x1000;
@@ -1637,7 +1637,7 @@ mod test {
         system.program[0] = 0x80;
         Sbc(Immediate).execute(&mut system).unwrap();
         assert_eq!(system.chip.a, 0xFF);
-        assert!(system.chip.c);
+        assert!(!system.chip.c);
 
         // From address
         system.chip.a = 208;
@@ -1648,7 +1648,7 @@ mod test {
         system.program[5] = 112;
         Sbc(Absolute).execute(&mut system).unwrap();
         assert_eq!(system.chip.a, 96);
-        assert!(!system.chip.c);
+        assert!(system.chip.c);
         assert!(system.chip.v);
     }
 
