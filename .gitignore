@@ -1,4 +1,4 @@
 /target
-tictactoe.bin
-tictactoe.sym
+*.bin
+*.sym
 .vim/
