@@ -19,6 +19,9 @@ use debugger::{get_debugger, try_parse_breakpoint, BreakPointType};
 mod renderer;
 use renderer::{Renderer, WindowEvent};
 
+mod recorder;
+use recorder::Recorder;
+
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 #[derive(Parser)]
@@ -28,6 +31,11 @@ struct Args {
     debug: bool,
     #[clap(long)]
     disassemble: bool,
+    /// Record your session, taking a screenshot when you exit. The screenshot and recording of
+    /// your session are placed in the tests/snapshots/<SNAPSHOT_NAME>/ directory. These will be
+    /// picked up by the automated test system.
+    #[clap(long, value_name = "SNAPSHOT_NAME")]
+    record: Option<String>,
     // TODO: take hex argument
     #[clap(short, long, parse(try_from_str=try_parse_breakpoint))]
     breakpoint: Option<BreakPointType>,
@@ -40,6 +48,7 @@ fn main() -> Result<()> {
     let Args {
         debug,
         disassemble,
+        record,
         breakpoint,
         symbol_file,
         file_name,
@@ -50,6 +59,7 @@ fn main() -> Result<()> {
         .try_into()
         .expect("Program expected to be 4096 bytes was not");
     let mut debugger = get_debugger(debug);
+    let recorder_option = record.map(Recorder::new);
 
     if debug && disassemble {
         debugger.dump_disassembly(program);
@@ -84,7 +94,12 @@ fn main() -> Result<()> {
             break;
         }
 
-        match renderer.handle_events() {
+        let event = renderer.handle_events();
+        if let Some(recorder) = recorder_option.as_ref() {
+            recorder.update(&event, &system)
+        }
+
+        match event {
             WindowEvent::Quit => break,
             WindowEvent::None => (),
             event => system.input_event(&event),
