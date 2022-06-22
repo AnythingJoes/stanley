@@ -3,6 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::renderer::WindowEvent;
+use crate::system::tia::{HEIGHT, STRIDE, WIDTH};
 use crate::system::System;
 use crate::Result;
 
@@ -29,10 +30,28 @@ impl Recorder {
             WindowEvent::Quit => {
                 writeln!(self.recording, "{} {event:?}", system.clocks)?;
                 fs::write(self.path.join("screen.bin"), system.tia.buffer.0)?;
+                self.create_ppm(&system.tia.buffer.0)?;
             }
             WindowEvent::None => {}
             _ => {
                 writeln!(self.recording, "{} {event:?}", system.clocks)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn create_ppm(&self, buffer: &[u8]) -> Result<()> {
+        let mut ppm_image = fs::File::create(&self.path.join("screen.ppm"))?;
+        writeln!(ppm_image, "P6")?;
+        writeln!(ppm_image, "{} {}", WIDTH * 3, HEIGHT * 2)?;
+        writeln!(ppm_image, "255")?;
+
+        for line in buffer.chunks(WIDTH as usize * STRIDE) {
+            for _ in 0..=1 {
+                for pixel in line.chunks(STRIDE) {
+                    let pixel = [pixel[2], pixel[1], pixel[0]];
+                    ppm_image.write_all(&[pixel, pixel, pixel].concat())?;
+                }
             }
         }
         Ok(())
