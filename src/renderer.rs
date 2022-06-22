@@ -7,6 +7,7 @@ use sdl2::{
     EventPump,
 };
 
+#[derive(Debug, Copy, Clone)]
 pub enum InputType {
     Joystick1Button,
     Joystick1Up,
@@ -15,6 +16,7 @@ pub enum InputType {
     Joystick1Right,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum WindowEvent {
     None,
     Quit,

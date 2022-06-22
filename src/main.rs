@@ -59,7 +59,7 @@ fn main() -> Result<()> {
         .try_into()
         .expect("Program expected to be 4096 bytes was not");
     let mut debugger = get_debugger(debug);
-    let recorder_option = record.map(Recorder::new);
+    let mut recorder_option = record.map(Recorder::new).transpose()?;
 
     if debug && disassemble {
         debugger.dump_disassembly(program);
@@ -95,8 +95,8 @@ fn main() -> Result<()> {
         }
 
         let event = renderer.handle_events();
-        if let Some(recorder) = recorder_option.as_ref() {
-            recorder.update(&event, &system)
+        if let Some(recorder) = recorder_option.as_mut() {
+            recorder.update(&event, &system)?;
         }
 
         match event {
