@@ -54,12 +54,14 @@ fn main() -> Result<()> {
         file_name,
     } = Args::parse();
 
-    let byte_vec = fs::read(file_name).map_err(|e| e.to_string())?;
+    let byte_vec = fs::read(&file_name).map_err(|e| e.to_string())?;
     let program = byte_vec
         .try_into()
         .expect("Program expected to be 4096 bytes was not");
     let mut debugger = get_debugger(debug);
-    let mut recorder_option = record.map(Recorder::new).transpose()?;
+    let mut recorder_option = record
+        .map(|snapshot_name| Recorder::new(&snapshot_name, &file_name))
+        .transpose()?;
 
     if debug && disassemble {
         debugger.dump_disassembly(program);
