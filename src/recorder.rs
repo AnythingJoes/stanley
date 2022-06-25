@@ -15,7 +15,7 @@ pub struct Recorder {
 impl Recorder {
     pub fn new(snapshot_name: &str, binary_file_path: &str) -> Result<Self> {
         let path = {
-            let tmp_path = Path::new("./tests");
+            let tmp_path = Path::new("./tests/snapshots");
             tmp_path.join(snapshot_name)
         };
         fs::create_dir_all(&path)?;

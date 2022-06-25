@@ -1,0 +1,11 @@
+1819392 InputStart(Joystick1Button)
+1914079 InputEnd(Joystick1Button)
+2969990 InputStart(Joystick1Down)
+3147844 InputEnd(Joystick1Down)
+3451344 InputStart(Joystick1Button)
+3548588 InputEnd(Joystick1Button)
+4174776 InputStart(Joystick1Left)
+4231578 InputEnd(Joystick1Left)
+4570945 InputStart(Joystick1Button)
+4649161 InputEnd(Joystick1Button)
+7032864 Quit
