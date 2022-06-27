@@ -1044,7 +1044,7 @@ mod test {
     use super::AddressMode::*;
     use super::Instruction::*;
     use super::*;
-    use crate::System;
+    use crate::system::System;
 
     #[test]
     fn adds_cycle_with_page_boundary_cross() {

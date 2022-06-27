@@ -1,4 +1,3 @@
-use crate::system::tia::{HEIGHT, WIDTH};
 use sdl2::{
     event::Event,
     keyboard::Keycode,
@@ -6,7 +5,9 @@ use sdl2::{
     surface::Surface,
     EventPump,
 };
+use std::str::FromStr;
 
+use crate::system::tia::{HEIGHT, WIDTH};
 #[derive(Debug, Copy, Clone)]
 pub enum InputType {
     Joystick1Button,
@@ -16,12 +17,50 @@ pub enum InputType {
     Joystick1Right,
 }
 
+impl FromStr for InputType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "Joystick1Button" => InputType::Joystick1Button,
+            "Joystick1Up" => InputType::Joystick1Up,
+            "Joystick1Down" => InputType::Joystick1Down,
+            "Joystick1Left" => InputType::Joystick1Left,
+            "Joystick1Right" => InputType::Joystick1Right,
+            _ => return Err("Invalid input type".to_owned()),
+        })
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum WindowEvent {
     None,
     Quit,
     InputStart(InputType),
     InputEnd(InputType),
+}
+
+impl FromStr for WindowEvent {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "Quit" => WindowEvent::Quit,
+            input if s.starts_with("InputStart") => {
+                let input_type = input
+                    .get(11..s.len() - 1)
+                    .ok_or_else(|| "Invalid input_start".to_owned())?;
+                WindowEvent::InputStart(input_type.parse()?)
+            }
+            input if s.starts_with("InputEnd") => {
+                let input_type = input
+                    .get(9..s.len() - 1)
+                    .ok_or_else(|| "Invalid input_start".to_owned())?;
+                WindowEvent::InputEnd(input_type.parse()?)
+            }
+            _ => return Err("Invalid window event".to_owned()),
+        })
+    }
 }
 
 pub struct Renderer<'a> {

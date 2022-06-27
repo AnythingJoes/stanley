@@ -1,28 +1,18 @@
 use std::{
-    error::Error,
     fs,
     time::{Duration, Instant},
 };
 
 use clap::Parser;
 
-mod system;
+pub use stanley::*;
+
+use debugger::{get_debugger, try_parse_breakpoint, BreakPointType};
+use recorder::Recorder;
+use renderer::{Renderer, WindowEvent};
 use system::instructions::Instruction;
 use system::System;
-
-mod timer;
 use timer::Timer;
-
-mod debugger;
-use debugger::{get_debugger, try_parse_breakpoint, BreakPointType};
-
-mod renderer;
-use renderer::{Renderer, WindowEvent};
-
-mod recorder;
-use recorder::Recorder;
-
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
