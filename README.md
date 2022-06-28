@@ -20,4 +20,7 @@ Atari 2600 Emulator in Rust
 - [ ] Use RGB colors instead of RGBA, and figure out color ording issue
 - [ ] Add sound
 - [ ] Handle bank switching cartridges
-- [ ] Handle various other peripherals and variations
+- [ ] Implement end-to-end testing
+    - [x] Add a testing framework for comparing atari image output
+    - [ ] Refactor the mess we made in our generated_tests.rs file
+    - [ ] Set up CI
